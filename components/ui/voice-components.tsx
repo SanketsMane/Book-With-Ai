@@ -1,0 +1,269 @@
+"use client"
+import React from 'react'
+import { Mic, MicOff, Volume2, Loader2, AlertCircle, Wifi } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
+interface VoiceMicButtonProps {
+  isListening: boolean
+  isProcessing: boolean
+  isSupported: boolean
+  error: string | null
+  onClick: () => void
+  className?: string
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'default' | 'ghost' | 'outline'
+}
+
+export function VoiceMicButton({
+  isListening,
+  isProcessing,
+  isSupported,
+  error,
+  onClick,
+  className,
+  size = 'md',
+  variant = 'default'
+}: VoiceMicButtonProps) {
+  const sizeClasses = {
+    sm: 'h-8 w-8',
+    md: 'h-10 w-10',
+    lg: 'h-12 w-12'
+  }
+
+  const iconSizeClasses = {
+    sm: 'h-3 w-3',
+    md: 'h-4 w-4', 
+    lg: 'h-5 w-5'
+  }
+
+  if (!isSupported) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        disabled
+        className={cn(sizeClasses[size], 'opacity-50', className)}
+        title="Voice input not supported in this browser"
+      >
+        <AlertCircle className={iconSizeClasses[size]} />
+      </Button>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <Button
+        variant={variant}
+        size="icon"
+        onClick={onClick}
+        disabled={isProcessing}
+        className={cn(
+          sizeClasses[size],
+          'transition-all duration-200',
+          {
+            'bg-red-500 hover:bg-red-600 text-white animate-pulse': isListening,
+            'bg-blue-500 hover:bg-blue-600 text-white': isProcessing,
+            'hover:scale-105': !isListening && !isProcessing
+          },
+          className
+        )}
+        title={
+          error ? error :
+          isListening ? 'Stop voice input' :
+          isProcessing ? 'Processing...' :
+          'Start voice input'
+        }
+      >
+        {isProcessing ? (
+          <Loader2 className={cn(iconSizeClasses[size], 'animate-spin')} />
+        ) : isListening ? (
+          <MicOff className={iconSizeClasses[size]} />
+        ) : (
+          <Mic className={iconSizeClasses[size]} />
+        )}
+      </Button>
+
+      {/* Pulse animation for listening state */}
+      {isListening && (
+        <div className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-30" />
+      )}
+
+      {/* Error indicator */}
+      {error && (
+        <div className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-background" />
+      )}
+    </div>
+  )
+}
+
+interface VoiceVisualizerProps {
+  isListening: boolean
+  isProcessing: boolean
+  confidence: number
+  className?: string
+}
+
+export function VoiceVisualizer({ 
+  isListening, 
+  isProcessing, 
+  confidence, 
+  className 
+}: VoiceVisualizerProps) {
+  const bars = Array.from({ length: 5 }, (_, i) => i)
+
+  if (!isListening && !isProcessing) {
+    return null
+  }
+
+  return (
+    <div className={cn('flex items-center gap-1', className)}>
+      {bars.map((_, index) => (
+        <div
+          key={index}
+          className={cn(
+            'w-1 bg-primary rounded-full transition-all duration-150',
+            {
+              'animate-pulse': isListening,
+              'opacity-30': !isListening
+            }
+          )}
+          style={{
+            height: isListening 
+              ? `${Math.random() * 16 + 8}px`
+              : '4px',
+            animationDelay: `${index * 100}ms`
+          }}
+        />
+      ))}
+      
+      {confidence > 0 && (
+        <div className="ml-2 text-xs text-muted-foreground">
+          {Math.round(confidence * 100)}%
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface VoiceStatusProps {
+  isListening: boolean
+  isProcessing: boolean
+  transcript: string
+  confidence: number
+  error: string | null
+  className?: string
+}
+
+export function VoiceStatus({
+  isListening,
+  isProcessing,
+  transcript,
+  confidence,
+  error,
+  className
+}: VoiceStatusProps) {
+  if (!isListening && !isProcessing && !transcript && !error) {
+    return null
+  }
+
+  return (
+    <div className={cn('space-y-2', className)}>
+      {/* Status indicator */}
+      <div className="flex items-center gap-2 text-sm">
+        {isProcessing && (
+          <div className="flex items-center gap-2 text-blue-600">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Processing...</span>
+          </div>
+        )}
+        
+        {isListening && !isProcessing && (
+          <div className="flex items-center gap-2 text-red-600">
+            <div className="h-2 w-2 bg-red-600 rounded-full animate-pulse" />
+            <span>Listening...</span>
+            <VoiceVisualizer 
+              isListening={isListening}
+              isProcessing={isProcessing}
+              confidence={confidence}
+            />
+          </div>
+        )}
+
+        {error && (
+          <div className={cn(
+            "flex items-center gap-2",
+            error.includes('network') || error.includes('temporarily unavailable') || error.includes('continue typing')
+              ? "text-amber-600" 
+              : "text-red-600"
+          )}>
+            {error.includes('network') || error.includes('temporarily unavailable') ? (
+              <Wifi className="h-3 w-3" />
+            ) : (
+              <AlertCircle className="h-3 w-3" />
+            )}
+            <span className="text-xs">{error}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Transcript preview */}
+      {transcript && (
+        <div className="p-3 bg-muted rounded-lg border">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-sm text-muted-foreground">
+              Voice transcript
+            </div>
+            {confidence > 0 && (
+              <div className={cn(
+                "text-xs font-semibold px-2 py-0.5 rounded-full",
+                confidence >= 0.8 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" :
+                confidence >= 0.6 ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" :
+                "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+              )}>
+                {Math.round(confidence * 100)}% {confidence >= 0.6 ? "✓ Auto-sending..." : "confidence"}
+              </div>
+            )}
+          </div>
+          <div className="text-sm font-medium">{transcript}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface VoiceCommandsHelpProps {
+  className?: string
+}
+
+export function VoiceCommandsHelp({ className }: VoiceCommandsHelpProps) {
+  const commands = [
+    { phrase: "Create a trip to [destination]", description: "Start planning a new trip" },
+    { phrase: "I want to travel from [city]", description: "Set departure location" },
+    { phrase: "Solo trip / Family vacation", description: "Specify group size" },
+    { phrase: "Cheap / Luxury budget", description: "Set budget preference" },
+    { phrase: "5 days trip", description: "Specify trip duration" }
+  ]
+
+  return (
+    <div className={cn('p-4 bg-muted/50 rounded-lg border', className)}>
+      <div className="flex items-center gap-2 mb-3">
+        <Volume2 className="h-4 w-4 text-primary" />
+        <h3 className="font-medium text-sm">Voice Commands</h3>
+      </div>
+      
+      <div className="space-y-2">
+        {commands.map((command, index) => (
+          <div key={index} className="text-xs">
+            <div className="font-medium text-primary">"{command.phrase}"</div>
+            <div className="text-muted-foreground">{command.description}</div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-3 text-xs text-muted-foreground">
+        💡 Tip: Speak clearly and pause briefly between commands
+      </div>
+    </div>
+  )
+}

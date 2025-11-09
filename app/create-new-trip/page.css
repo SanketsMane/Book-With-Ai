@@ -1,0 +1,18 @@
+/* Create new trip page styles */
+.create-trip-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.create-trip-content {
+  flex: 1;
+  padding: 1rem;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .create-trip-content {
+    padding: 0.5rem;
+  }
+}
