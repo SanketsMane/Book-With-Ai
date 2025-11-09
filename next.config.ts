@@ -4,11 +4,6 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true,
   
-  // Optimize CSS handling
-  experimental: {
-    optimizeCss: true,
-  },
-
   // Optimize production builds
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
