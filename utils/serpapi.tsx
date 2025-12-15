@@ -102,3 +102,20 @@ export async function getPlaceImages(placeName: string): Promise<string[]> {
     return [];
   }
 }
+
+// Search places with detailed information (for hotels, restaurants, etc.)
+export async function searchPlacesWithSerpAPI(query: string): Promise<any[]> {
+  try {
+    const response = await getJson({
+      engine: "google_maps",
+      q: query,
+      type: "search",
+      api_key: SERPAPI_KEY
+    });
+
+    return response.local_results || [];
+  } catch (error) {
+    console.error('SerpAPI Places Search Error:', error);
+    return [];
+  }
+}

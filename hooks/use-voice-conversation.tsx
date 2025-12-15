@@ -397,7 +397,10 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
 
         utterance.onerror = (event) => {
           setState(prev => ({ ...prev, isSpeaking: false }))
-          console.error('Speech synthesis error:', event)
+          // Only log actual errors, not interrupted/canceled events
+          if (event.error && event.error !== 'interrupted' && event.error !== 'canceled') {
+            console.error('Speech synthesis error:', event.error)
+          }
           reject(event)
         }
 

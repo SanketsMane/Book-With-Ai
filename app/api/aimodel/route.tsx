@@ -7,10 +7,10 @@ import { searchTravelInfo } from "@/utils/serpapi";
 
 
 
-const PROMPT = `You are a Book With Ai Agent. Your goal is to help the user plan a trip by **asking one relevant trip-related question at a time**.
+const PROMPT = `You are a Book With Ai Agent. Your goal is to help the user with two main services:
 
-Only ask questions about the following details in order, and wait for the user's answer before asking the next: 
-
+## 1. TRIP PLANNING
+If user wants to plan a trip, ask these questions one at a time:
 1. Starting location (source) 
 2. Destination city or country 
 3. Group size (Solo, Couple, Family, Friends) 
@@ -18,23 +18,30 @@ Only ask questions about the following details in order, and wait for the user's
 5. Trip duration (number of days)  
 6. Special requirements or preferences (if any)
 
-Do not ask multiple questions at once, and never ask irrelevant questions.
-If any answer is missing or unclear, politely ask the user to clarify before proceeding.
-Always maintain a conversational, interactive style while asking questions.
+## 2. HOTEL BOOKING
+If user wants to book a hotel (phrases like "book hotel", "find hotel", "hotel in [city]"), ask:
+1. Location/City for hotel
+2. Budget preference (Low: ₹0-3000, Medium: ₹3000-8000, High: ₹8000-50000, Luxury: ₹50000+)
+3. Check-in and check-out dates (optional)
 
-IMPORTANT: Your response MUST be valid JSON only, no markdown formatting, no code blocks.
-Return ONLY this exact JSON structure with no additional text:
-{"resp":"Your response text here","ui":"budget or groupSize or tripDuration or final or null"}
+IMPORTANT: Detect user intent first:
+- Hotel booking keywords: "book hotel", "find hotel", "hotel in", "need accommodation", "where to stay"
+- Trip planning keywords: "plan trip", "going to", "travel to", "vacation"
 
-Valid ui values: "budget", "groupSize", "tripDuration", "final", null
-Use "final" when all information is collected and trip generation will begin.
-Use null when asking for source or destination.
-Use the specific UI type when asking about that topic.
+Your response MUST be valid JSON only, no markdown formatting, no code blocks.
+Return ONLY this exact JSON structure:
+{"resp":"Your response text here","ui":"budget or groupSize or tripDuration or final or hotelBudget or hotelSearch or null","intent":"trip or hotel or null"}
 
-Example valid responses:
-{"resp":"Great! Now, what is your desired destination?","ui":null}
-{"resp":"Perfect! How many people will be traveling?","ui":"groupSize"}
-{"resp":"Excellent! All set. Generating your trip now...","ui":"final"}
+Valid ui values: "budget", "groupSize", "tripDuration", "final", "hotelBudget", "hotelSearch", null
+- Use "hotelBudget" when asking hotel budget
+- Use "hotelSearch" when ready to search hotels (all hotel info collected)
+- Use "final" when all trip planning info is collected
+- Use null when asking for source/destination/location
+
+Example responses:
+{"resp":"Great! What is your budget for the hotel?","ui":"hotelBudget","intent":"hotel"}
+{"resp":"Perfect! Searching for hotels in Pune now...","ui":"hotelSearch","intent":"hotel"}
+{"resp":"Excellent! Generating your trip plan...","ui":"final","intent":"trip"}
 `
 
 const FINAL_PROMPT = `Generate Travel Plan fwith give details, give me Hotels options list with HotelName, 
@@ -157,6 +164,119 @@ export async function POST(req: NextRequest) {
       const userQuery = messages[messages.length - 1]?.content?.toLowerCase() || '';
       const conversationHistory = messages.map((m: any) => m.content?.toLowerCase() || '').join(' ');
       
+      console.log('💬 User query:', userQuery);
+      console.log('📜 Conversation history:', conversationHistory);
+      
+      // Detect intent - Hotel booking or Trip planning
+      const isHotelBooking = userQuery.match(/book hotel|find hotel|hotel in|need accommodation|where to stay|hotels? in/i);
+      
+      if (isHotelBooking) {
+        // HOTEL BOOKING FLOW
+        const hasAskedHotelLocation = conversationHistory.includes('which city') || conversationHistory.includes('where would you like to book');
+        const hasAskedHotelBudget = conversationHistory.includes('budget for the hotel');
+        
+        // Extract location from user query - improved regex
+        let city = null;
+        const cityPatterns = [
+          /(?:hotel in|find hotel in|book hotel in|hotels? in)\s+([a-z\s]+?)(?:\s|$|,|\.)/i,
+          /(?:in|at)\s+([a-z\s]+?)(?:\s+hotel|\s+city|\s|$)/i,
+          /^([a-z\s]+?)(?:\s+hotel)/i
+        ];
+        
+        for (const pattern of cityPatterns) {
+          const match = userQuery.match(pattern);
+          if (match && match[1]) {
+            city = match[1].trim();
+            // Remove common words
+            city = city.replace(/\b(the|a|an|hotel|city|please|can|you|find|book)\b/gi, '').trim();
+            if (city.length > 2) break;
+          }
+        }
+        
+        // Also check if user just typed a city name in response to location question
+        if (!city && hasAskedHotelLocation && userQuery.length < 30) {
+          // User likely just typed city name
+          city = userQuery.replace(/\b(hotel|city|please|thanks|okay|ok)\b/gi, '').trim();
+        }
+        
+        console.log('🏙️ Extracted city:', city, 'from query:', userQuery);
+        
+        // Step 1: Ask for location if not provided
+        if (!hasAskedHotelLocation && !city) {
+          return NextResponse.json({ 
+            resp: `I'd be happy to help you find a hotel! 🏨\n\nWhich city would you like to book a hotel in?`,
+            ui: null,
+            intent: 'hotel',
+            needsLocation: true
+          });
+        }
+        
+        // Step 2: Ask for budget - store the city in response
+        if (!hasAskedHotelBudget && city) {
+          return NextResponse.json({ 
+            resp: `Great! I'll help you find hotels in ${city}.\n\nWhat is your budget for the hotel?`,
+            ui: 'hotelBudget',
+            intent: 'hotel',
+            location: city
+          });
+        }
+        
+        // Step 2b: User provided location, now ask budget
+        if (hasAskedHotelLocation && !hasAskedHotelBudget) {
+          const extractedCity = city || userQuery.trim();
+          return NextResponse.json({ 
+            resp: `Perfect! Looking for hotels in ${extractedCity}.\n\nWhat is your budget for the hotel?`,
+            ui: 'hotelBudget',
+            intent: 'hotel',
+            location: extractedCity
+          });
+        }
+        
+        // Step 3: Ready to search hotels - get city from entire conversation
+        let locationFromHistory = city;
+        
+        if (!locationFromHistory) {
+          // Check all user messages for city names
+          for (const msg of messages.reverse()) {
+            if (msg.role === 'user') {
+              const content = msg.content.toLowerCase();
+              // Skip if it's a budget selection
+              if (content.match(/low|medium|high|luxury|budget/)) continue;
+              
+              // Try to extract city name
+              const patterns = [
+                /(?:hotel in|find hotel in|book hotel in|in)\s+([a-z\s]+?)(?:\s|$|,|\.)/i,
+                /^([a-z\s]{3,20})$/i  // Just a city name
+              ];
+              
+              for (const pattern of patterns) {
+                const match = msg.content.match(pattern);
+                if (match && match[1]) {
+                  const extracted = match[1].trim().replace(/\b(hotel|city|please|the)\b/gi, '').trim();
+                  if (extracted.length >= 3) {
+                    locationFromHistory = extracted;
+                    break;
+                  }
+                }
+              }
+              
+              if (locationFromHistory) break;
+            }
+          }
+        }
+        
+        const finalLocation = locationFromHistory || 'Pune';
+        console.log('📍 Final location for search:', finalLocation);
+        
+        return NextResponse.json({ 
+          resp: `Perfect! Searching for the best hotels in ${finalLocation} within your budget... 🔍`,
+          ui: 'hotelSearch',
+          intent: 'hotel',
+          location: finalLocation
+        });
+      }
+      
+      // TRIP PLANNING FLOW (existing code)
       // Track what has been asked by checking conversation history
       const hasAskedDestination = conversationHistory.includes('where would you like to travel');
       const hasAskedSource = conversationHistory.includes('where will you be traveling from');
@@ -167,8 +287,9 @@ export async function POST(req: NextRequest) {
       // Step 1: Initial greeting - Ask for destination
       if (!hasAskedDestination) {
         return NextResponse.json({ 
-          resp: `Hello! 👋 I'm your AI travel assistant. I'll help you plan the perfect trip!\n\nTo get started, where would you like to travel to?`,
-          ui: null
+          resp: `Hello! 👋 I'm your AI travel assistant. I can help you:\n\n1. Plan a complete trip 🗺️\n2. Book hotels 🏨\n\nWhat would you like to do today?`,
+          ui: null,
+          intent: 'trip'
         });
       }
       
@@ -182,7 +303,8 @@ export async function POST(req: NextRequest) {
         
         return NextResponse.json({ 
           resp: `Excellent choice! ${destination} is amazing! 🌟\n\nNow, where will you be traveling from?`,
-          ui: null
+          ui: null,
+          intent: 'trip'
         });
       }
       
@@ -190,7 +312,8 @@ export async function POST(req: NextRequest) {
       if (hasAskedSource && !hasAskedGroupSize) {
         return NextResponse.json({ 
           resp: `Perfect! Now let me know - how many people will be traveling?\n\nChoose from the options below:`,
-          ui: 'groupSize'
+          ui: 'groupSize',
+          intent: 'trip'
         });
       }
       
@@ -198,7 +321,8 @@ export async function POST(req: NextRequest) {
       if (hasAskedGroupSize && !hasAskedBudget) {
         return NextResponse.json({ 
           resp: `Great! Now, what's your preferred budget for this trip?\n\nSelect from the options below:`,
-          ui: 'budget'
+          ui: 'budget',
+          intent: 'trip'
         });
       }
       
@@ -206,7 +330,8 @@ export async function POST(req: NextRequest) {
       if (hasAskedBudget && !hasAskedDuration) {
         return NextResponse.json({ 
           resp: `Perfect! Last question - how many days will your trip be?\n\nSelect the duration:`,
-          ui: 'tripDuration'
+          ui: 'tripDuration',
+          intent: 'trip'
         });
       }
       
@@ -214,14 +339,16 @@ export async function POST(req: NextRequest) {
       if (hasAskedDuration) {
         return NextResponse.json({ 
           resp: `🎉 Perfect! I have all the information I need.\n\nGenerating your personalized trip plan now... This will take just a moment!`,
-          ui: 'final'
+          ui: 'final',
+          intent: 'trip'
         });
       }
       
       // Fallback
       return NextResponse.json({ 
         resp: `Let's start planning your trip! Where would you like to go?`,
-        ui: null
+        ui: null,
+        intent: 'trip'
       });
     }
     

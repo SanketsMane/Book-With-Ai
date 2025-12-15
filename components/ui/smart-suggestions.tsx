@@ -168,7 +168,7 @@ export const SmartSuggestions: React.FC<SmartSuggestionsProps> = ({
             <CardContent className="pt-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">{personalizedGroupSize}</p>
+                  <p className="font-medium">{typeof personalizedGroupSize === 'string' ? personalizedGroupSize : JSON.stringify(personalizedGroupSize)}</p>
                   <p className="text-xs text-muted-foreground">
                     Most common in your trips
                   </p>

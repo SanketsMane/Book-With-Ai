@@ -5,7 +5,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useUser } from '@clerk/nextjs'
 import { ArrowDown, Globe2, Landmark, Plane, Send } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useState } from 'react'
+import { useVoiceConversation } from '@/hooks/use-voice-conversation'
+import { VoiceMicButton } from '@/components/ui/voice-components'
 
 
 export const suggestions = [
@@ -31,13 +33,39 @@ function Hero() {
 
     const { user } = useUser();
     const router = useRouter();
+    const [userInput, setUserInput] = useState<string>('');
+
+    // Voice Conversation Integration
+    const [voiceState, voiceControls] = useVoiceConversation({
+        continuous: true,
+        interimResults: true,
+        language: 'en-US',
+        voiceEnabled: false,
+        onResult: (transcript: string, confidence: number) => {
+            if (transcript.length > 3) {
+                setUserInput(transcript)
+            }
+        },
+        onError: (error: string) => {
+            if (error.includes('Failed to start') || error.includes('Speech recognition error')) {
+                console.error('Voice AI Error:', error)
+            }
+        },
+        maxDuration: 30000,
+        autoSend: false
+    })
+
     const onSend = () => {
         if (!user) {
             router.push('/sign-in')
             return;
         }
-        //Navigate to Create Trip Planner Web Page
-        router.push('/create-new-trip')
+        // Navigate to Create Trip Planner with the user's input as query parameter
+        if (userInput.trim()) {
+            router.push(`/create-new-trip?query=${encodeURIComponent(userInput)}`)
+        } else {
+            router.push('/create-new-trip')
+        }
     }
 
     return (
@@ -54,10 +82,35 @@ function Hero() {
                 <div>
                     <div className='border border-border rounded-2xl p-4 relative bg-card shadow-sm hover:shadow-md transition-shadow'>
                         <Textarea 
-                            placeholder='Create a trip for Paris from New York'
-                            className='w-full h-28 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-foreground placeholder:text-muted-foreground'
+                            placeholder={
+                                voiceState.isListening 
+                                    ? '🎤 Listening... Speak now or type your travel plans' 
+                                    : 'Create a trip for Paris from New York'
+                            }
+                            className='w-full h-28 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-foreground placeholder:text-muted-foreground pr-24'
+                            value={userInput}
+                            onChange={(e) => setUserInput(e.target.value)}
+                            disabled={voiceState.isListening}
                         />
-                        <Button size={'icon'} className='absolute bottom-6 right-6' onClick={() => onSend()}>
+                        
+                        {/* Voice Input Button */}
+                        <VoiceMicButton
+                            isListening={voiceState.isListening}
+                            isProcessing={voiceState.isProcessing}
+                            isSupported={voiceState.isSupported}
+                            error={voiceState.error}
+                            onClick={voiceControls.toggleListening}
+                            className="absolute bottom-6 right-16"
+                            size="md"
+                            variant="ghost"
+                        />
+                        
+                        <Button 
+                            size={'icon'} 
+                            className='absolute bottom-6 right-6' 
+                            onClick={() => onSend()}
+                            disabled={voiceState.isListening}
+                        >
                             <Send className='h-4 w-4' />
                         </Button>
                     </div>

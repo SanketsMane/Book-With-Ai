@@ -54,7 +54,7 @@ export const Timeline = ({ data, tripData }: { data: TimelineEntry[], tripData: 
           </div>
           <div className="flex gap-2 items-center">
             <Users />
-            <h2>{tripData?.group_size}</h2>
+            <h2>{typeof tripData?.group_size === 'string' ? tripData.group_size : JSON.stringify(tripData?.group_size || '')}</h2>
           </div>
         </div>
       </div>
