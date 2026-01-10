@@ -22,7 +22,7 @@ export interface PlaceSearchResult {
 export async function searchPlaces(query: string, location?: string): Promise<PlaceSearchResult[]> {
   try {
     const searchQuery = location ? `${query} in ${location}` : query;
-    
+
     const response = await getJson({
       engine: "google_maps",
       q: searchQuery,
@@ -116,6 +116,77 @@ export async function searchPlacesWithSerpAPI(query: string): Promise<any[]> {
     return response.local_results || [];
   } catch (error) {
     console.error('SerpAPI Places Search Error:', error);
+    return [];
+  }
+}
+
+// Interface for our app's Flight model
+export interface Flight {
+  id: string;
+  airline: string;
+  flightNumber: string;
+  from: string;
+  to: string;
+  departure: string;
+  arrival: string;
+  duration: string;
+  price: number;
+  currency: string;
+  logo?: string;
+  stops: number;
+  aircraft?: string;
+  baggage?: string;
+  meals?: boolean;
+  cancellation?: string;
+}
+
+// Search for flights using SerpAPI Google Flights
+export async function searchFlights(fromCode: string, toCode: string, date: string, passengers: number = 1): Promise<Flight[]> {
+  try {
+    console.log(`✈️ Searching flights: ${fromCode} -> ${toCode} on ${date}`);
+    const response = await getJson({
+      engine: "google_flights",
+      departure_id: fromCode,
+      arrival_id: toCode,
+      outbound_date: date,
+      currency: "INR",
+      hl: "en",
+      adults: passengers,
+      api_key: SERPAPI_KEY,
+      type: "2" // One-way trip
+    });
+
+    if (!response.best_flights && !response.other_flights) {
+      console.warn('⚠️ No flights found in SerpAPI response');
+      return [];
+    }
+
+    const rawFlights = [...(response.best_flights || []), ...(response.other_flights || [])];
+
+    return rawFlights.slice(0, 15).map((f: any, index: number) => {
+      const leg = f.flights[0]; // Assuming first leg for now
+      return {
+        id: `FL-${index}-${fromCode}-${toCode}`,
+        airline: leg.airline || 'Unknown Airline',
+        flightNumber: leg.flight_number || '',
+        from: leg.departure_airport?.name || fromCode,
+        to: leg.arrival_airport?.name || toCode,
+        departure: leg.departure_airport?.time?.split(' ')[1] || '00:00', // Extract HH:MM
+        arrival: leg.arrival_airport?.time?.split(' ')[1] || '00:00',
+        duration: `${Math.floor(f.total_duration / 60)}h ${f.total_duration % 60}m`,
+        price: f.price || 0, // SerpAPI returns numerical price often, or need parsing if string
+        currency: 'INR',
+        logo: leg.airline_logo,
+        stops: f.layovers ? f.layovers.length : 0,
+        aircraft: leg.airplane,
+        // Defaults for info not always in basic search
+        baggage: 'Check with airline',
+        cancellation: 'Check rules'
+      };
+    });
+
+  } catch (error) {
+    console.error('❌ SerpAPI Flight Search Error:', error);
     return [];
   }
 }
