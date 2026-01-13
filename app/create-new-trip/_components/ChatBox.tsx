@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import axios from 'axios'
-import { Loader, Send, Volume2, Bot } from 'lucide-react'
+import { Loader, Send, Volume2, Bot, FileText } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useVoiceConversation } from '@/hooks/use-voice-conversation'
 import { VoiceMicButton, VoiceStatus } from '@/components/ui/voice-components'
@@ -32,6 +32,7 @@ type Message = {
     location?: string
     flights?: any[]
     route?: { from: string, to: string }
+    budget?: number
 }
 
 export type TripInfo = {
@@ -169,7 +170,7 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
     }, [searchParams, initialQueryProcessed, messages.length])
 
 
-    const triggerSend = async (text: string) => {
+    const triggerSend = async (text: string, isFinalOverride?: boolean) => {
         if (!text.trim()) return
 
         const newMsg: Message = {
@@ -183,9 +184,8 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
 
         try {
             const result = await axios.post('/api/aimodel', {
-                messages: [...messages, newMsg], // Note: messages state might be stale here if called rapidly, but for user chat it's usually ok
-                // Better approach: pass current messages + newMsg
-                isFinal
+                messages: [...messages, newMsg],
+                isFinal: isFinalOverride ?? isFinal
             })
 
             const { resp, ui, trip_plan, intent, location } = result.data || {}
@@ -500,44 +500,74 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
         const lastMsg = messages[messages.length - 1]
         if (lastMsg?.ui === 'final' && !isFinal) {
             setIsFinal(true)
-            triggerSend('Ok, Great!')
+            triggerSend('Ok, Great!', true)
         }
     }, [messages, isFinal])
 
     return (
         <div className='h-full flex flex-col bg-white dark:bg-gray-800'>
             {messages.length === 0 && (
-                <div className='flex-1 flex items-center justify-center p-6'>
-                    <EmptyBoxState onSelectOption={(v: string) => { setUserInput(v); triggerSend(v) }} />
+                <div className='flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500'>
+                    <div className="max-w-2xl w-full text-center space-y-8">
+                        <div className="flex items-center justify-center gap-3 mb-2">
+                            <div className="bg-blue-600 rounded-2xl p-3 shadow-lg shadow-blue-600/20">
+                                <FileText className="w-8 h-8 text-white" />
+                            </div>
+                            <div className="text-left">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Itinerary Generator</h1>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Let AI create personalized day-by-day travel plans</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-[32px] p-10 shadow-xl shadow-blue-900/5">
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-2">
+                                    <FileText className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="space-y-3 max-w-lg">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create Your Perfect Itinerary</h2>
+                                    <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        Tell us about your trip and we'll generate a detailed day-by-day itinerary with activities, dining, and budget planning
+                                    </p>
+                                </div>
+                                <Button
+                                    className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg hover:translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 mt-2"
+                                    onClick={() => setUserInput("Help me plan a trip")}
+                                >
+                                    Start Planning with AI
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
             {/* Messages */}
-            <section className='flex-1 overflow-y-auto px-4 py-2 space-y-4'>
+            <section className='flex-1 overflow-y-auto px-4 py-6 space-y-6'>
                 {messages.map((msg, index) => (
                     <React.Fragment key={index}>
                         {/* Regular Message */}
                         {msg.ui !== 'hotelResults' && msg.ui !== 'flightResults' && (
-                            <div className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {/* Avatar for AI */}
                                 {msg.role === 'assistant' && (
-                                    <div className='w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-1'>
-                                        <Bot className='h-4 w-4 text-white' />
+                                    <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
+                                        <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
                                     </div>
                                 )}
 
-                                <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${msg.role === 'user'
-                                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-tr-md'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-md'
+                                <div className={`max-w-xs lg:max-w-md px-5 py-3.5 shadow-sm ${msg.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+                                    : 'bg-white dark:bg-card border border-border/50 text-foreground rounded-2xl rounded-tl-sm'
                                     }`}>
-                                    <div className="text-sm leading-relaxed">{msg.content}</div>
+                                    <div className="text-[15px] leading-relaxed">{msg.content}</div>
                                     {RenderGenerativeUi(msg.ui)}
                                 </div>
 
                                 {/* Avatar for User */}
                                 {msg.role === 'user' && (
-                                    <div className='w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center flex-shrink-0 mt-1'>
-                                        <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>U</span>
+                                    <div className='w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-1 border border-border'>
+                                        <span className='text-xs font-bold text-gray-600 dark:text-gray-300'>YOU</span>
                                     </div>
                                 )}
                             </div>
@@ -545,33 +575,25 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
 
                         {/* Hotel Results Display - Full Width */}
                         {msg.ui === 'hotelResults' && msg.hotels && msg.location && (
-                            <div className='w-full'>
-                                <div className='flex gap-3 justify-start mb-3'>
-                                    <div className='w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0'>
-                                        <Bot className='h-4 w-4 text-white' />
-                                    </div>
-                                    <div className='max-w-xs lg:max-w-md px-4 py-3 rounded-2xl rounded-tl-md shadow-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'>
-                                        <div className="text-sm leading-relaxed">{msg.content}</div>
+                            <div className='w-full pl-12 pr-4'>
+                                <div className='mb-4 max-w-lg'>
+                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
                                     </div>
                                 </div>
-                                <div className='ml-11'>
-                                    <HotelBookingUI hotels={msg.hotels} location={msg.location} />
-                                </div>
+                                <HotelBookingUI hotels={msg.hotels} location={msg.location} />
                             </div>
                         )}
 
                         {/* Flight Results Display - Full Width */}
                         {msg.ui === 'flightResults' && msg.flights && (
-                            <div className='w-full'>
-                                <div className='flex gap-3 justify-start mb-3'>
-                                    <div className='w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0'>
-                                        <Bot className='h-4 w-4 text-white' />
-                                    </div>
-                                    <div className='max-w-xs lg:max-w-md px-4 py-3 rounded-2xl rounded-tl-md shadow-sm bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'>
-                                        <div className="text-sm leading-relaxed">{msg.content}</div>
+                            <div className='w-full pl-12 pr-4'>
+                                <div className='mb-4 max-w-lg'>
+                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
                                     </div>
                                 </div>
-                                <div className='ml-11'>
+                                <div className='w-full'>
                                     {/* @ts-ignore */}
                                     <FlightBookingUI flights={msg.flights} route={msg.route || { from: '', to: '' }} budget={msg.budget} />
                                 </div>
@@ -581,16 +603,16 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
                 ))}
 
                 {loading && (
-                    <div className='flex gap-3 justify-start'>
-                        <div className='w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0'>
-                            <Bot className='h-4 w-4 text-white' />
+                    <div className='flex gap-4 justify-start'>
+                        <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
+                            <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
                         </div>
-                        <div className='max-w-xs lg:max-w-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl rounded-tl-md flex items-center gap-2 shadow-sm'>
-                            <Loader className='animate-spin h-4 w-4 text-blue-500' />
-                            <span className="text-sm">
-                                {userInput.toLowerCase().includes('hotel') ? 'Searching real-time hotels...' :
+                        <div className='bg-white dark:bg-card text-foreground px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 flex items-center gap-3 shadow-sm'>
+                            <Loader className='animate-spin h-4 w-4 text-blue-600' />
+                            <span className="text-sm font-medium text-muted-foreground">
+                                {userInput.toLowerCase().includes('hotel') ? 'Searching best hotels...' :
                                     userInput.toLowerCase().includes('flight') ? 'Finding live flights...' :
-                                        isFinal ? 'Generating your trip plan...' : 'Thinking...'}
+                                        isFinal ? 'Generating your itinerary...' : 'Thinking...'}
                             </span>
                         </div>
                     </div>
@@ -613,28 +635,28 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
 
             {/* Input - Conditionally Rendered */}
             {!props.hideInput && (
-                <section className='border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4'>
-                    <div className='border border-gray-300 dark:border-gray-600 rounded-2xl p-3 relative bg-gray-50 dark:bg-gray-700 shadow-sm focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-colors'>
+                <section className='p-4 pb-6 bg-transparent'>
+                    <div className='relative bg-white dark:bg-card rounded-2xl shadow-lg border border-border/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30'>
                         {/* Voice Response Toggle & Stop Button */}
                         {voiceState.isSupported && (
-                            <div className="flex items-center justify-between gap-2 mb-2 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-2">
+                            <div className="absolute -top-10 right-0 flex items-center justify-end gap-2 mb-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 bg-white/80 dark:bg-card/80 backdrop-blur p-1 rounded-full border border-border/50 shadow-sm">
                                     <button
                                         onClick={voiceControls.toggleVoice}
-                                        className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${voiceState.voiceEnabled
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                            : 'bg-muted hover:bg-muted/80'
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${voiceState.voiceEnabled
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                                             }`}
                                         title={voiceState.voiceEnabled ? 'AI voice replies enabled' : 'Click to enable AI voice replies'}
                                     >
-                                        <Volume2 className="h-3 w-3" />
-                                        <span className="font-medium">
-                                            {voiceState.voiceEnabled ? '🔊 AI Voice ON' : '🔇 AI Voice OFF'}
+                                        <Volume2 className="h-3.5 w-3.5" />
+                                        <span className="font-medium text-[11px]">
+                                            {voiceState.voiceEnabled ? 'Voice ON' : 'Voice OFF'}
                                         </span>
                                     </button>
                                     {voiceState.isSpeaking && (
-                                        <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                                            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                                        <span className="flex items-center gap-1.5 px-2 text-green-600 dark:text-green-400 font-medium text-[11px]">
+                                            <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
                                             Speaking...
                                         </span>
                                     )}
@@ -644,11 +666,10 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
                                 {voiceState.isSpeaking && (
                                     <button
                                         onClick={voiceControls.stopSpeaking}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 transition-colors font-medium"
+                                        className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card border border-red-200 text-red-600 hover:bg-red-50 shadow-sm transition-colors"
                                         title="Stop AI from speaking"
                                     >
-                                        <Volume2 className="h-4 w-4" />
-                                        Stop
+                                        <div className="h-2.5 w-2.5 bg-red-500 rounded-[1px]" />
                                     </button>
                                 )}
                             </div>
@@ -657,43 +678,45 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
                         <Textarea
                             placeholder={
                                 voiceState.isListening
-                                    ? '🎤 Listening... Speak now or type your message'
-                                    : voiceState.error && voiceState.error.includes('network')
-                                        ? 'Voice temporarily unavailable - please type your travel plans here...'
-                                        : voiceState.error
-                                            ? 'Type your travel plans here (voice input unavailable)...'
-                                            : voiceState.voiceEnabled
-                                                ? '🎤 Speak or type your message...'
-                                                : 'Type your message...'
+                                    ? '🎤 Listening... (Speak now)'
+                                    : voiceState.voiceEnabled
+                                        ? 'Type or say your plan...'
+                                        : 'Ask me anything about your trip...'
                             }
-                            className='w-full h-20 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-gray-800 dark:text-gray-200 placeholder:text-gray-500 dark:placeholder:text-gray-400 pr-20 text-sm'
+                            className='w-full min-h-[60px] h-16 max-h-40 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-base text-foreground placeholder:text-muted-foreground/50 py-4 pl-4 pr-24 rounded-2xl'
                             onChange={(e) => setUserInput(e.target.value)}
                             value={userInput}
                             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
                             disabled={voiceState.isListening || voiceState.isSpeaking}
                         />
 
-                        {/* Voice Input Button */}
-                        <VoiceMicButton
-                            isListening={voiceState.isListening}
-                            isProcessing={voiceState.isProcessing}
-                            isSupported={voiceState.isSupported}
-                            error={voiceState.error}
-                            onClick={voiceControls.toggleListening}
-                            className="absolute bottom-3 right-12"
-                            size="sm"
-                            variant="ghost"
-                        />
+                        {/* Controls Container */}
+                        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                            {/* Voice Input Button */}
+                            <VoiceMicButton
+                                isListening={voiceState.isListening}
+                                isProcessing={voiceState.isProcessing}
+                                isSupported={voiceState.isSupported}
+                                error={voiceState.error}
+                                onClick={voiceControls.toggleListening}
+                                className=""
+                                size="sm"
+                                variant="ghost"
+                            />
 
-                        {/* Send Button */}
-                        <Button
-                            size='icon'
-                            className='absolute bottom-3 right-3 h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-md rounded-full border-0'
-                            onClick={onSend}
-                            disabled={loading || voiceState.isListening || voiceState.isSpeaking}
-                        >
-                            <Send className='h-4 w-4 text-white' />
-                        </Button>
+                            {/* Send Button */}
+                            <Button
+                                size='icon'
+                                className={`h-10 w-10 rounded-xl shadow-sm transition-all duration-200 ${!userInput.trim() && !loading
+                                    ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'
+                                    }`}
+                                onClick={onSend}
+                                disabled={loading || voiceState.isListening || voiceState.isSpeaking || (!userInput.trim() && !loading)}
+                            >
+                                {loading ? <Loader className='h-4 w-4 animate-spin' /> : <Send className='h-4 w-4' />}
+                            </Button>
+                        </div>
                     </div>
                 </section>
             )}

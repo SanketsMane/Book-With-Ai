@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   Brain,
   TrendingUp,
   MapPin,
@@ -111,12 +111,12 @@ export const PersonalizationDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold capitalize">
-                  {preferences?.travelStyle || 'Balanced'}
+                  {preferences?.travelStyle?.type || 'Balanced'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {preferences?.travelStyle === 'luxury' && 'Premium experiences and comfort'}
-                  {preferences?.travelStyle === 'budget' && 'Value-focused adventures'}
-                  {preferences?.travelStyle === 'balanced' && 'Perfect mix of comfort and value'}
+                  {preferences?.travelStyle?.type === 'luxury' && 'Premium experiences and comfort'}
+                  {preferences?.travelStyle?.type === 'budget' && 'Value-focused adventures'}
+                  {preferences?.travelStyle?.type === 'balanced' && 'Perfect mix of comfort and value'}
                 </p>
               </CardContent>
             </Card>
@@ -367,7 +367,7 @@ export const PersonalizationDashboard: React.FC = () => {
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm">Budget Range</span>
                       <span className="font-medium">
-                        ${travelPatterns?.preferredBudgetRange.min?.toLocaleString() || '0'} - 
+                        ${travelPatterns?.preferredBudgetRange.min?.toLocaleString() || '0'} -
                         ${travelPatterns?.preferredBudgetRange.max?.toLocaleString() || '0'}
                       </span>
                     </div>
@@ -398,21 +398,21 @@ export const PersonalizationDashboard: React.FC = () => {
                   )) || <span className="text-sm text-muted-foreground">None yet</span>}
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium mb-2">Travel Style</h4>
                 <Badge variant="default" className="capitalize">
-                  {preferences?.travelStyle || 'Balanced'}
+                  {preferences?.travelStyle?.type || 'Balanced'}
                 </Badge>
               </div>
 
               <div>
                 <h4 className="font-medium mb-2">Preferred Airlines</h4>
                 <div className="flex flex-wrap gap-2">
-                  {preferences?.preferredAirlines?.length ? 
+                  {preferences?.preferredAirlines?.length ?
                     preferences.preferredAirlines.map((airline, index) => (
                       <Badge key={index} variant="outline">{airline}</Badge>
-                    )) : 
+                    )) :
                     <span className="text-sm text-muted-foreground">None specified</span>
                   }
                 </div>
@@ -421,10 +421,10 @@ export const PersonalizationDashboard: React.FC = () => {
               <div>
                 <h4 className="font-medium mb-2">Hotel Categories</h4>
                 <div className="flex flex-wrap gap-2">
-                  {preferences?.preferredHotelCategories?.length ? 
+                  {preferences?.preferredHotelCategories?.length ?
                     preferences.preferredHotelCategories.map((category, index) => (
                       <Badge key={index} variant="outline">{category}</Badge>
-                    )) : 
+                    )) :
                     <span className="text-sm text-muted-foreground">None specified</span>
                   }
                 </div>

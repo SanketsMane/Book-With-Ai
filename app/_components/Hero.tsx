@@ -110,68 +110,70 @@ function Hero() {
     ]
 
     return (
-        <div className='min-h-screen bg-background flex flex-col items-center pt-20 px-4 pb-20'>
-            <div className='max-w-6xl w-full text-center space-y-8'>
+        <div className='min-h-screen bg-transparent flex flex-col items-center pt-16 px-4 pb-20'>
+            <div className='max-w-7xl w-full text-center space-y-10'>
 
                 {/* Header Section */}
-                <div className='space-y-4'>
+                <div className='space-y-6'>
                     <div className="flex justify-center">
-                        <Badge variant="secondary" className="px-4 py-1.5 rounded-full text-sm font-medium gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                        <Badge variant="secondary" className="px-5 py-2 rounded-full text-sm font-medium gap-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
+                            <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                             </span>
                             AI-Powered Trip Planner v2.0
                         </Badge>
                     </div>
 
-                    <h1 className='text-5xl md:text-7xl font-bold text-foreground tracking-tight'>
+                    <h1 className='text-5xl md:text-7xl font-bold text-foreground tracking-tight leading-tight'>
                         Your AI Travel Assistant
                     </h1>
                     <p className='text-xl text-muted-foreground max-w-2xl mx-auto'>
-                        Find flights, cruises, and cars with intelligent recommendations
+                        Find flights, hotels, and plan entire trips in seconds doing nothing but chatting.
                     </p>
                 </div>
 
                 {/* Search Interaction */}
-                <div className='max-w-2xl mx-auto relative group'>
-                    <div className='absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-500'></div>
-                    <div className='relative bg-card rounded-2xl shadow-lg border border-border flex items-center p-2'>
-                        <Search className='w-6 h-6 text-muted-foreground ml-4' />
+                <div className='max-w-3xl mx-auto relative group'>
+                    <div className='absolute -inset-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500'></div>
+                    <div className='relative bg-white dark:bg-card rounded-2xl shadow-xl border border-border/50 flex items-center p-3 transition-transform hover:scale-[1.01] duration-300'>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                            <Search className='w-6 h-6 text-blue-600 dark:text-blue-400' />
+                        </div>
                         <Input
-                            placeholder='Ask anything: Find flights from Delhi to Dubai next weekend'
-                            className='border-none text-lg shadow-none focus-visible:ring-0 h-14 bg-transparent'
+                            placeholder='Ask anything: "Find 3-day trip in Goa under ₹20k"'
+                            className='border-none text-lg shadow-none focus-visible:ring-0 h-14 bg-transparent px-4 placeholder:text-muted-foreground/50'
                             onClick={onStartPlanning}
                             readOnly
                         />
+                        <Button size="icon" className="h-12 w-12 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-sm" onClick={onStartPlanning}>
+                            <Sparkles className="h-5 w-5 text-white" />
+                        </Button>
                     </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className='flex flex-wrap items-center justify-center gap-4 pt-4'>
-                    <Button size='lg' className='bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 text-base' onClick={onStartPlanning}>
-                        <Sparkles className='w-4 h-4 mr-2' />
-                        Start with AI
+                    <Button size='lg' className='bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 text-base shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5' onClick={onStartPlanning}>
+                        Start Planning
                     </Button>
-                    <Button size='lg' variant='outline' className='rounded-full px-8 h-12 text-base' onClick={() => router.push('/explore')}>
-                        <Map className='w-4 h-4 mr-2' />
+                    <Button size='lg' variant='outline' className='rounded-full px-8 h-12 text-base border-2 hover:bg-muted/50' onClick={() => router.push('/explore')}>
                         Explore Destinations
-                    </Button>
-                    <Button variant='ghost' className='text-muted-foreground hover:text-foreground' onClick={() => router.push('/price-alerts')}>
-                        <TrendingUp className='w-4 h-4 mr-2' />
-                        Track Prices
                     </Button>
                 </div>
 
                 {/* AI Suggestions Chips */}
                 <div className='pt-8 space-y-4'>
-                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
-                        <Sparkles className="w-4 h-4 text-yellow-500" />
-                        AI-Powered Suggestions
+                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground/80 lowercase">
+                        <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
+                        Suggested Prompts
                     </div>
                     <div className='flex flex-wrap justify-center gap-3 max-w-4xl mx-auto'>
                         {suggestions.map((item, index) => (
-                            <div key={index} className='flex items-center gap-2 px-4 py-2 bg-muted/50 hover:bg-muted border border-border/50 rounded-full text-sm text-muted-foreground transition-colors cursor-pointer border-dashed'>
+                            <div key={index}
+                                onClick={onStartPlanning}
+                                className='flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-card hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-border rounded-full text-sm font-medium text-muted-foreground hover:text-blue-600 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow'
+                            >
                                 {item.icon}
                                 {item.text}
                             </div>
@@ -180,20 +182,27 @@ function Hero() {
                 </div>
 
                 {/* Features Grid */}
-                <div className='pt-16'>
-                    <h2 className='text-2xl font-bold text-foreground mb-8'>Explore All Features</h2>
+                <div className='pt-20 pb-10'>
+                    <div className="flex flex-col items-center mb-12">
+                        <h2 className='text-3xl font-bold text-foreground mb-4'>Explore All Features</h2>
+                        <p className="text-muted-foreground max-w-lg">Everything you need to plan, book, and manage your travels in one place.</p>
+                    </div>
+
                     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
                         {features.map((feature, index) => (
                             <div key={index}
-                                className='group p-6 rounded-2xl border border-border bg-card hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col items-center text-center space-y-4'
+                                className='group p-6 rounded-3xl border border-border bg-white dark:bg-card hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col items-start text-left gap-4 h-full'
                                 onClick={() => router.push(feature.path)}
                             >
-                                <div className={`p-4 rounded-2xl ${feature.color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                                    {feature.icon}
+                                <div className={`p-3.5 rounded-2xl ${feature.color.replace('bg-', 'bg-opacity-10 text-').replace('text-white', '')} bg-opacity-10 w-fit group-hover:scale-110 transition-transform duration-300`}>
+                                    {/* Map icon color correctly by cloning element to override className, strict UI fix */}
+                                    {React.cloneElement(feature.icon as React.ReactElement<any>, {
+                                        className: `w-6 h-6 ${feature.color.replace('bg-', 'text-')}`
+                                    })}
                                 </div>
                                 <div>
-                                    <h3 className='font-bold text-lg text-card-foreground'>{feature.title}</h3>
-                                    <p className='text-sm text-muted-foreground'>{feature.desc}</p>
+                                    <h3 className='font-bold text-lg text-foreground mb-1 group-hover:text-blue-600 transition-colors'>{feature.title}</h3>
+                                    <p className='text-sm text-muted-foreground leading-relaxed'>{feature.desc}</p>
                                 </div>
                             </div>
                         ))}

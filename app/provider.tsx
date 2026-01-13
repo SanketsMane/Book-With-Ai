@@ -22,19 +22,42 @@ function Provider({
     const { user } = useUser();
 
     useEffect(() => {
-        user && CreateNewUser();
+        if (user) {
+            CreateNewUser();
+        } else {
+            // Fallback: Create/Login as Guest if no Clerk user (for Dev/Demo when Auth is blocked)
+            CreateGuestUser();
+        }
     }, [user])
-
 
     const CreateNewUser = async () => {
         if (user) {
-            // Save New User if Not Exist
+            try {
+                // Save New User if Not Exist
+                const result = await CreateUser({
+                    email: user?.primaryEmailAddress?.emailAddress ?? '',
+                    imageUrl: user?.imageUrl ?? '',
+                    name: user?.fullName ?? ''
+                });
+                setUserDetail(result);
+            } catch (e) {
+                console.error("Error creating/syncing user:", e);
+                // Optionally handle error state
+            }
+        }
+    }
+
+    const CreateGuestUser = async () => {
+        try {
             const result = await CreateUser({
-                email: user?.primaryEmailAddress?.emailAddress ?? '',
-                imageUrl: user?.imageUrl,
-                name: user?.fullName ?? ''
+                email: 'guest@bookwithai.com',
+                imageUrl: 'https://github.com/shadcn.png',
+                name: 'Guest User'
             });
             setUserDetail(result);
+            console.log("Logged in as Guest User");
+        } catch (e) {
+            console.error("Guest login failed:", e);
         }
     }
 

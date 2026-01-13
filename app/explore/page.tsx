@@ -1,90 +1,50 @@
 "use client"
-import React, { useState } from 'react'
-import ChatBox from '../create-new-trip/_components/ChatBox'
-import SmartMap from '../create-new-trip/_components/SmartMap'
-import { Plane, Map as MapIcon, Globe2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-    TooltipProvider
-} from "@/components/ui/tooltip"
-import dynamic from 'next/dynamic'
-
-// Dynamically import ChatBox to avoid hydration issues if any
-const DynamicChatBox = dynamic(() => import('../create-new-trip/_components/ChatBox'), { ssr: false })
+import { Input } from '@/components/ui/input'
+import { Filter, MapIcon, Search } from 'lucide-react'
+import React from 'react'
 
 function Explore() {
-    const [activeIndex, setActiveIndex] = useState(0); // 0 = Chat, 1 = Map (for mobile toggle)
-
     return (
         <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
-            {/* Mobile-first layout */}
-            <div className='flex flex-col lg:flex-row h-[calc(100vh-64px)]'> {/* Adjust height for navbar */}
-
-                {/* Chat Section */}
-                <div className={`lg:w-96 xl:w-1/3 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
-                    ${activeIndex === 0 ? 'flex' : 'hidden lg:flex'} h-full`}>
-
-                    {/* Header */}
-                    <div className='bg-gradient-to-r from-sky-500 to-blue-600 p-4 text-white shrink-0'>
-                        <div className='flex items-center gap-3'>
-                            <div className='w-10 h-10 bg-white/20 rounded-full flex items-center justify-center'>
-                                <Plane className='h-5 w-5' />
-                            </div>
-                            <div>
-                                <h1 className='font-semibold text-lg'>Flight Assistant</h1>
-                                <p className='text-sm text-sky-100'>Find the best flight deals</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Chat Area */}
-                    <div className='flex-1 overflow-hidden relative'>
-                        <DynamicChatBox />
-                    </div>
+            {/* Header Section */}
+            <div className='max-w-7xl mx-auto px-6 py-10 space-y-8'>
+                <div>
+                    <h1 className='text-3xl font-bold text-gray-900 dark:text-white'>Explore Destinations</h1>
+                    <p className='text-gray-500 dark:text-gray-400 mt-1'>Discover amazing places and find the best flight deals</p>
                 </div>
 
-                {/* Map/Content Section */}
-                <div className={`flex-1 relative bg-gray-50 dark:bg-gray-900 
-                    ${activeIndex === 1 ? 'flex' : 'hidden lg:flex'} h-full`}>
-                    <div className='absolute inset-0'>
-                        <SmartMap />
-
-                        {/* Overlay for "Live Flights" simulation */}
-                        <div className="absolute top-4 left-4 right-4 z-[400] pointer-events-none">
-                            <div className="bg-white/90 dark:bg-black/80 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 inline-block">
-                                <p className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                                    <span className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                    </span>
-                                    Live Flight Radar
-                                </p>
-                            </div>
-                        </div>
+                {/* Search Bar */}
+                <div className='flex gap-4'>
+                    <div className='flex-1 relative'>
+                        <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400' />
+                        <Input
+                            placeholder='Search destinations...'
+                            className='w-full h-12 pl-12 rounded-xl border-gray-200 dark:border-gray-800 bg-white dark:bg-card shadow-sm hover:shadow-md transition-shadow'
+                        />
                     </div>
+                    <Button variant="outline" className='h-12 px-6 rounded-xl border-gray-200 dark:border-gray-800 gap-2 font-medium hover:bg-gray-50 dark:hover:bg-gray-800'>
+                        <Filter className='w-4 h-4' />
+                        Filters
+                    </Button>
                 </div>
 
-                {/* Mobile Toggle Button */}
-                <div className="lg:hidden fixed bottom-20 right-4 z-50">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size={'lg'}
-                                    className='w-14 h-14 rounded-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 shadow-xl border-0'
-                                    onClick={() => setActiveIndex(activeIndex === 0 ? 1 : 0)}
-                                >
-                                    {activeIndex === 0 ? <MapIcon className='h-6 w-6' /> : <Plane className='h-6 w-6' />}
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                                {activeIndex === 0 ? 'Show Map' : 'Show Chat'}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                {/* Map Container */}
+                <div className='w-full h-[600px] bg-white dark:bg-card border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm flex flex-col items-center justify-center relative overflow-hidden group'>
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                    <div className='relative z-10 flex flex-col items-center gap-4 text-center p-6'>
+                        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform duration-500">
+                            <MapIcon className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className='text-xl font-bold text-gray-900 dark:text-white mb-2'>Interactive Map View</h3>
+                            <p className='text-gray-500 dark:text-gray-400 max-w-md mx-auto'>
+                                Explore destinations on an interactive world map with live pricing
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

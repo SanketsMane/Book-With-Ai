@@ -48,52 +48,63 @@ function Header() {
     return (
         <>
             {/* Desktop & Tablet Header */}
-            <div className='flex justify-between items-center p-3 px-6 shadow-sm border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50'>
-                {/* Logo  */}
-                <div className='flex items-center gap-3'>
-                    <Image src={'/logo-small.png'} alt='logo' width={40} height={40} className='rounded-lg' />
-                    <h2 className='font-bold text-xl text-foreground'>Book With Ai</h2>
-                </div>
-
-                {/* Center Icon Navigation - Hidden on Mobile */}
-                <div className='hidden md:flex items-center gap-6 md:gap-8'>
-                    {menuOptions.map((menu, index) => (
-                        <Link key={index} href={menu.path}>
-                            <div className={`p-2 rounded-xl transition-all duration-200 hover:bg-primary/10 hover:text-primary 
-                                ${path == menu.path ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
-                                {menu.icon}
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-
-                {/* Right Section */}
-                <div className='flex gap-3 items-center'>
-                    <ThemeToggle />
-
-                    {!user ?
-                        <div className='flex gap-3 items-center'>
-                            <Link href='/sign-in'>
-                                <Button variant='outline' size="sm">Sign In</Button>
-                            </Link>
-                            <Link href='/sign-up'>
-                                <Button size="sm">Get Started</Button>
-                            </Link>
-                        </div> :
-                        <div className='flex items-center gap-3'>
-                            <UserButton />
+            <div className='p-3 px-4 shadow-sm border-b bg-white dark:bg-background/95 sticky top-0 z-50'>
+                <div className='max-w-7xl mx-auto flex justify-between items-center'>
+                    {/* Logo  */}
+                    <div className='flex items-center gap-3'>
+                        <div className="relative w-10 h-10">
+                            <Image src={'/logo-small.png'} alt='logo' fill className='object-contain rounded-lg' />
                         </div>
-                    }
+                        <h2 className='font-bold text-xl text-foreground tracking-tight'>Book With Ai</h2>
+                    </div>
+
+                    {/* Center Icon Navigation - Hidden on Mobile */}
+                    <div className='hidden md:flex items-center gap-2'>
+                        {menuOptions.map((menu, index) => (
+                            <Link key={index} href={menu.path}>
+                                <div className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all duration-200 font-medium text-sm
+                                ${path == menu.path
+                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                                        : 'text-muted-foreground hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-foreground'
+                                    }`}>
+                                    {menu.icon}
+                                    <span className="hidden lg:inline">{menu.path === '/' ? 'Home' : menu.path.replace('/', '').split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Right Section */}
+                    <div className='flex gap-3 items-center'>
+                        <ThemeToggle />
+
+                        {!user ?
+                            <div className='flex gap-3 items-center'>
+                                <Link href='/sign-in'>
+                                    <Button variant='ghost' size="sm" className="font-medium">Sign In</Button>
+                                </Link>
+                                <Link href='/sign-up'>
+                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6">Get Started</Button>
+                                </Link>
+                            </div> :
+                            <div className='flex items-center gap-3 pl-2'>
+                                <UserButton afterSignOutUrl="/" />
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
 
             {/* Mobile Bottom Navigation */}
-            <div className='fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur z-50 md:hidden pb-safe'>
+            <div className='fixed bottom-0 left-0 right-0 border-t bg-white dark:bg-background/95 backdrop-blur z-50 md:hidden pb-safe'>
                 <div className='flex justify-around items-center p-3'>
                     {menuOptions.map((menu, index) => (
                         <Link key={index} href={menu.path}>
-                            <div className={`p-2 rounded-xl transition-all duration-200 
-                                ${path == menu.path ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
+                            <div className={`p-3 rounded-full transition-all duration-200 flex flex-col items-center gap-1
+                                ${path == menu.path
+                                    ? 'text-blue-600 dark:text-blue-400'
+                                    : 'text-muted-foreground'
+                                }`}>
                                 {menu.icon}
                             </div>
                         </Link>

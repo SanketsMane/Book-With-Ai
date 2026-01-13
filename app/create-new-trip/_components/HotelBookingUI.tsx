@@ -42,101 +42,104 @@ export default function HotelBookingUI({ hotels, location }: HotelBookingUIProps
   return (
     <>
       <div className="w-full max-w-4xl mt-3">
-        <div className="mb-3">
-          <h3 className="text-lg font-bold text-gray-800">
-            Hotels in {location}
-          </h3>
-          <p className="text-sm text-gray-600">Found {hotels.length} hotels matching your budget</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">
+              Hotels in {location}
+            </h3>
+            <p className="text-sm text-gray-500">Found {hotels.length} options matching your budget</p>
+          </div>
+          <div className="text-xs font-medium px-2 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hidden sm:block">
+            Real-time Prices
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {displayedHotels.map((hotel, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer border border-gray-200"
-            onClick={() => setSelectedHotel(hotel)}
-          >
-            <div className="flex gap-3 p-3">
-              {/* Hotel Image - Compact */}
-              <div className="relative w-24 h-24 flex-shrink-0 overflow-hidden rounded-md">
-                <img
-                  src={hotel.image || '/placeholder-hotel.jpg'}
-                  alt={hotel.name}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400';
-                  }}
-                />
-                <div className="absolute top-1 right-1 bg-white px-2 py-0.5 rounded-full shadow-sm">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold text-xs">{hotel.rating}</span>
+            <div
+              key={index}
+              className="group bg-white rounded-2xl shadow-sm hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden cursor-pointer border border-gray-100 hover:border-blue-200"
+              onClick={() => setSelectedHotel(hotel)}
+            >
+              <div className="flex gap-4 p-4">
+                {/* Hotel Image - Compact */}
+                <div className="relative w-28 h-28 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                  <img
+                    src={hotel.image || '/placeholder-hotel.jpg'}
+                    alt={hotel.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400';
+                    }}
+                  />
+                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-black/5">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <span className="font-bold text-xs text-gray-800">{hotel.rating}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Hotel Details - Compact */}
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-sm text-gray-800 mb-1 line-clamp-1">
-                  {hotel.name}
-                </h4>
+                {/* Hotel Details - Compact */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div>
+                    <h4 className="font-bold text-base text-gray-900 mb-1 line-clamp-1 group-hover:text-blue-600 transition-colors">
+                      {hotel.name}
+                    </h4>
 
-                <div className="flex items-start gap-1 mb-2">
-                  <MapPin className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-gray-600 line-clamp-1">{hotel.address}</p>
-                </div>
+                    <div className="flex items-start gap-1.5 mb-2">
+                      <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-500 line-clamp-1">{hotel.address}</p>
+                    </div>
 
-                <div className="flex items-center gap-1 mb-2">
-                  <DollarSign className="w-4 h-4 text-green-600" />
-                  <span className="text-lg font-bold text-green-600">{hotel.price}</span>
-                  <span className="text-xs text-gray-500">per night</span>
-                </div>
-
-                {/* Amenities - Compact */}
-                {hotel.amenities && hotel.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {hotel.amenities.slice(0, 2).map((amenity, idx) => (
-                      <span
-                        key={idx}
-                        className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
-                      >
-                        {amenity}
-                      </span>
-                    ))}
-                    {hotel.amenities.length > 2 && (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        +{hotel.amenities.length - 2}
-                      </span>
+                    {/* Amenities - Compact */}
+                    {hotel.amenities && hotel.amenities.length > 0 && (
+                      <div className="hidden sm:flex flex-wrap gap-1.5 mb-2">
+                        {hotel.amenities.slice(0, 3).map((amenity, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] uppercase tracking-wider font-semibold bg-gray-50 text-gray-500 px-2 py-1 rounded-md border border-gray-100"
+                          >
+                            {amenity}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                )}
 
-                {/* Action Button - Compact */}
-                <button
-                  className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-md transition-colors duration-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(
-                      `https://www.google.com/maps/search/?api=1&query=${hotel.coordinates.latitude},${hotel.coordinates.longitude}`,
-                      '_blank'
-                    );
-                  }}
-                >
-                  View on Map
-                </button>
+                  <div className="flex items-end justify-between mt-1">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-blue-600">{hotel.price}</span>
+                      <span className="text-xs text-gray-400 font-medium">/ night</span>
+                    </div>
+
+                    {/* Action Button - Compact */}
+                    <button
+                      className="text-xs bg-gray-900 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 shadow-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(
+                          `https://www.google.com/maps/search/?api=1&query=${hotel.coordinates.latitude},${hotel.coordinates.longitude}`,
+                          '_blank'
+                        );
+                      }}
+                    >
+                      View Map
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
         {/* Show More/Less Button */}
         {hotels.length > 3 && (
           <button
             onClick={() => setShowAll(!showAll)}
-            className="mt-3 w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors duration-200 text-sm"
+            className="mt-4 w-full py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium rounded-xl transition-colors duration-200 text-sm shadow-sm"
           >
-            {showAll ? `Show Less` : `Show All ${hotels.length} Hotels`}
+            {showAll ? `Show Less` : `View ${hotels.length - 3} More Hotels`}
           </button>
         )}
       </div>

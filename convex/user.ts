@@ -21,8 +21,8 @@ export const CreateNewUser = mutation({
                 imageUrl: args.imageUrl
             }
             //If Not then create New user
-            const result = await ctx.db.insert('UserTable', userData);
-            return userData;
+            const userId = await ctx.db.insert('UserTable', userData);
+            return { ...userData, _id: userId };
         }
 
         return user[0];

@@ -69,8 +69,7 @@ function HotelCardItem({ hotel }: Props) {
                     rel="noopener noreferrer"
                 >
                     <Button
-                        variant="outline"
-                        className="mt-3 w-full flex items-center justify-center gap-2"
+                        className="mt-3 w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0 font-medium rounded-xl h-10 shadow-none transition-colors"
                     >
                         View on Map
                     </Button>
