@@ -82,6 +82,7 @@ export default function RootLayout({
         </head>
         <body
           className={outfit.className}
+          suppressHydrationWarning
         >
           <ThemeProvider>
             <ConvexClientProvider>

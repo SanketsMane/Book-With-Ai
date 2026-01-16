@@ -31,7 +31,7 @@ function FreeGlobalMap() {
   useEffect(() => {
     if (tripDetailInfo?.itinerary) {
       const coords: [number, number][] = []
-      
+
       tripDetailInfo.itinerary.forEach((day: Itinerary) => {
         day.activities?.forEach((activity: Activity) => {
           if (activity.geo_coordinates?.latitude && activity.geo_coordinates?.longitude) {
@@ -39,7 +39,7 @@ function FreeGlobalMap() {
           }
         })
       })
-      
+
       // Add hotel coordinates if available
       if (tripDetailInfo.hotels) {
         tripDetailInfo.hotels.forEach((hotel: any) => {
@@ -48,25 +48,22 @@ function FreeGlobalMap() {
           }
         })
       }
-      
+
       setCoordinates(coords)
-      
+
       // Set center to first coordinate if available
       if (coords.length > 0) {
         setDefaultCenter(coords[0])
       }
     }
-    // Force map to re-render when trip data changes
-    setMapKey(prev => prev + 1)
   }, [tripDetailInfo])
-  
+
   return (
     <div className="w-[95%] h-[85vh] rounded-[20px] overflow-hidden border">
-      <DynamicMapComponent 
+      <DynamicMapComponent
         coordinates={coordinates}
         defaultCenter={defaultCenter}
         tripData={tripDetailInfo}
-        key={mapKey}
       />
     </div>
   )

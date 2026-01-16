@@ -14,16 +14,16 @@ function EmptyBoxState({ onSelectOption }: any) {
             <div className='flex flex-col gap-4 mt-7'>
                 {suggestions.map((suggestion, index) => (
                     <div key={index}
-                        onClick={() => onSelectOption(suggestion.title)}
+                        onClick={() => onSelectOption(suggestion.text)}
                         className='flex items-center gap-3 border border-border
                                 rounded-xl p-4 cursor-pointer hover:border-primary hover:bg-primary/5 
                                 bg-card text-card-foreground transition-all duration-200 hover:shadow-md'>
                         <div className="flex-shrink-0">{suggestion.icon}</div>
-                        <h2 className='text-lg font-medium'>{suggestion.title}</h2>
+                        <h2 className='text-lg font-medium'>{suggestion.text}</h2>
                     </div>
                 ))}
             </div>
-        </div>
+        </div >
     )
 }
 

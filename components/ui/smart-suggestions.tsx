@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Sparkles, 
-  MapPin, 
-  DollarSign, 
-  Users, 
+import {
+  Sparkles,
+  MapPin,
+  DollarSign,
+  Users,
   Calendar,
   Brain,
   Target,
@@ -43,16 +43,16 @@ export const SmartSuggestions: React.FC<SmartSuggestionsProps> = ({
   } = usePersonalization();
 
   // Compute suggestions directly without useEffect to avoid infinite loops
-  const destinationSuggestions = hasData && currentDestination 
-    ? getSmartDestinationSuggestion(currentDestination) 
+  const destinationSuggestions = hasData && currentDestination
+    ? getSmartDestinationSuggestion(currentDestination)
     : [];
 
-  const smartBudget = hasData && currentDestination && currentDays > 0 
-    ? getSmartBudgetSuggestion(currentDestination, currentDays) 
+  const smartBudget = hasData && currentDestination && currentDays > 0
+    ? getSmartBudgetSuggestion(currentDestination, currentDays)
     : 0;
 
-  const personalizedGroupSize = hasData 
-    ? getPersonalizedGroupSize() 
+  const personalizedGroupSize = hasData
+    ? getPersonalizedGroupSize()
     : '';
 
   if (!hasData) {
@@ -136,7 +136,7 @@ export const SmartSuggestions: React.FC<SmartSuggestionsProps> = ({
                 <div>
                   <p className="font-medium">${smartBudget.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">
-                    Based on your {preferences?.travelStyle} style
+                    Based on your {preferences?.travelStyle?.type} style
                   </p>
                 </div>
                 <Button
@@ -195,12 +195,12 @@ export const SmartSuggestions: React.FC<SmartSuggestionsProps> = ({
                 <Target className="h-4 w-4 text-primary" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">
-                    Your travel style: <span className="capitalize">{preferences.travelStyle}</span>
+                    Your travel style: <span className="capitalize">{preferences.travelStyle.type}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {preferences.travelStyle === 'luxury' && 'Focusing on premium experiences and comfort'}
-                    {preferences.travelStyle === 'budget' && 'Optimizing for value and affordable adventures'}
-                    {preferences.travelStyle === 'balanced' && 'Perfect balance of comfort and value'}
+                    {preferences.travelStyle.type === 'luxury' && 'Focusing on premium experiences and comfort'}
+                    {preferences.travelStyle.type === 'budget' && 'Optimizing for value and affordable adventures'}
+                    {preferences.travelStyle.type === 'balanced' && 'Perfect balance of comfort and value'}
                   </p>
                 </div>
               </div>
@@ -262,7 +262,7 @@ export const PersonalizedInput: React.FC<PersonalizedInputProps> = ({
         className={className}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
       />
-      
+
       {showSuggestions && (
         <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
           {suggestions.map((suggestion, index) => (

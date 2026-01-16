@@ -71,14 +71,13 @@ function PlaceCardItem({ activity }: Props) {
                     href={`https://www.google.com/maps/search/?api=1&query=${activity?.place_name}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3"
+                    className="mt-3 block"
                 >
                     <Button
                         size="sm"
-                        variant="outline"
-                        className="w-full flex items-center justify-center gap-2"
+                        className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border-0 font-medium rounded-xl h-9 shadow-none transition-colors"
                     >
-                        View on Map <ExternalLink className="w-4 h-4" />
+                        View on Map <ExternalLink className="w-3.5 h-3.5" />
                     </Button>
                 </Link>
             </div>

@@ -4,7 +4,6 @@ import { v } from "convex/values";
 // Create or update user preferences
 export const updateUserPreferences = mutation({
   args: {
-    userId: v.string(),
     preferredBudget: v.optional(v.object({
       flight: v.optional(v.number()),
       hotel: v.optional(v.number()),
@@ -16,18 +15,24 @@ export const updateUserPreferences = mutation({
     travelStyle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     const existing = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     const updateData = {
-      userId: args.userId,
+      userId: userId,
       preferredBudget: args.preferredBudget || { flight: 0, hotel: 0, total: 0 },
       preferredDestinations: args.preferredDestinations || [],
       preferredAirlines: args.preferredAirlines || [],
       preferredHotelCategories: args.preferredHotelCategories || [],
-      travelStyle: args.travelStyle || "balanced",
+      homeAirport: [],
+      travelStyle: { type: args.travelStyle ?? "balanced" },
       lastUpdated: new Date().toISOString(),
     };
 
@@ -42,24 +47,30 @@ export const updateUserPreferences = mutation({
 
 // Get user preferences
 export const getUserPreferences = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null; // Or return default structure if preferred
+    }
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     if (!preferences) {
       // Return default preferences
       return {
-        userId: args.userId,
+        userId: userId,
         preferredBudget: { flight: 0, hotel: 0, total: 0 },
         preferredDestinations: [],
         preferredAirlines: [],
         preferredHotelCategories: [],
-        travelStyle: "balanced",
+        homeAirport: [],
+        travelStyle: { type: "balanced" },
         lastUpdated: new Date().toISOString(),
       };
     }
@@ -71,19 +82,23 @@ export const getUserPreferences = query({
 // Learn from user trip data
 export const learnFromTrip = mutation({
   args: {
-    userId: v.string(),
     tripData: v.any(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     if (!preferences) {
       // Create initial preferences from trip data
       const newPreferences = {
-        userId: args.userId,
+        userId: userId,
         preferredBudget: {
           flight: 0,
           hotel: 0,
@@ -92,8 +107,9 @@ export const learnFromTrip = mutation({
         preferredDestinations: [args.tripData.destination].filter(Boolean),
         preferredAirlines: [],
         preferredHotelCategories: [],
-        travelStyle: args.tripData.budget?.toLowerCase().includes('luxury') ? 'luxury' :
-                     args.tripData.budget?.toLowerCase().includes('cheap') ? 'budget' : 'balanced',
+        homeAirport: [],
+        travelStyle: args.tripData.budget?.toLowerCase().includes('luxury') ? { type: 'luxury' } :
+          args.tripData.budget?.toLowerCase().includes('cheap') ? { type: 'budget' } : { type: 'balanced' },
         lastUpdated: new Date().toISOString(),
       };
 
@@ -110,11 +126,11 @@ export const learnFromTrip = mutation({
       }
 
       // Update travel style based on budget choices
-      let travelStyle = preferences.travelStyle;
+      let travelStyle = preferences.travelStyle || { type: 'balanced' };
       if (args.tripData.budget?.toLowerCase().includes('luxury')) {
-        travelStyle = 'luxury';
+        travelStyle = { type: 'luxury' };
       } else if (args.tripData.budget?.toLowerCase().includes('cheap')) {
-        travelStyle = 'budget';
+        travelStyle = { type: 'budget' };
       }
 
       await ctx.db.patch(preferences._id, {
@@ -126,7 +142,7 @@ export const learnFromTrip = mutation({
 
     // Record search history
     await ctx.db.insert("SearchHistory", {
-      userId: args.userId,
+      userId: userId,
       searchType: "trip",
       searchData: args.tripData,
       searchDate: new Date().toISOString(),
@@ -138,26 +154,37 @@ export const learnFromTrip = mutation({
 // Get personalized recommendations
 export const getPersonalizedRecommendations = query({
   args: {
-    userId: v.string(),
     type: v.string(), // "destinations", "hotels", "budget"
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     const searchHistory = await ctx.db
       .query("SearchHistory")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .take(10);
 
-    const trips = await ctx.db
+    const user = await ctx.db
+      .query("UserTable")
+      .filter((q) => q.eq(q.field("email"), userId))
+      .first();
+
+    const trips = user ? await ctx.db
       .query("TripDetailTable")
-      .filter((q) => q.eq(q.field("uid"), args.userId as any))
+      .filter((q) => q.eq(q.field("uid"), user._id))
       .order("desc")
-      .take(5);
+      .take(5) : [];
 
     // Generate recommendations based on type
     switch (args.type) {
@@ -177,19 +204,28 @@ export const getPersonalizedRecommendations = query({
 
 // Get user travel patterns
 export const getUserTravelPatterns = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const trips = await ctx.db
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    const userId = identity.email!;
+
+    const user = await ctx.db
+      .query("UserTable")
+      .filter((q) => q.eq(q.field("email"), userId))
+      .first();
+
+    const trips = user ? await ctx.db
       .query("TripDetailTable")
-      .filter((q) => q.eq(q.field("uid"), args.userId as any))
+      .filter((q) => q.eq(q.field("uid"), user._id))
       .order("desc")
-      .collect();
+      .collect() : [];
 
     const searchHistory = await ctx.db
       .query("SearchHistory")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .take(50);
 
@@ -210,13 +246,17 @@ export const getUserTravelPatterns = query({
 // Record user interaction for learning
 export const recordUserInteraction = mutation({
   args: {
-    userId: v.string(),
     interactionType: v.string(), // "search", "view", "book", "favorite"
     data: v.any(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     await ctx.db.insert("SearchHistory", {
-      userId: args.userId,
+      userId: userId,
       searchType: args.interactionType,
       searchData: args.data,
       searchDate: new Date().toISOString(),
@@ -227,7 +267,7 @@ export const recordUserInteraction = mutation({
     if (args.interactionType === "favorite_destination") {
       const preferences = await ctx.db
         .query("UserPreferences")
-        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .filter((q) => q.eq(q.field("userId"), userId))
         .first();
 
       if (preferences) {
@@ -260,12 +300,12 @@ function generateDestinationRecommendations(preferences: any, history: any[], tr
   ];
 
   // Customize based on preferences
-  if (preferences?.travelStyle === 'luxury') {
+  if (preferences?.travelStyle?.type === 'luxury') {
     destinations.unshift(
       { name: "Maldives", reason: "Ultimate luxury beach resort destination", match: 95 },
       { name: "Swiss Alps", reason: "Premium mountain luxury experience", match: 90 }
     );
-  } else if (preferences?.travelStyle === 'budget') {
+  } else if (preferences?.travelStyle?.type === 'budget') {
     destinations.unshift(
       { name: "Thailand", reason: "Amazing value for money destination", match: 92 },
       { name: "Portugal", reason: "European charm at affordable prices", match: 88 }
@@ -284,9 +324,9 @@ function generateBudgetRecommendations(preferences: any, history: any[], trips: 
   ];
 
   // Recommend based on travel style
-  if (preferences?.travelStyle === 'budget') {
+  if (preferences?.travelStyle?.type === 'budget') {
     return budgetRanges.slice(0, 2);
-  } else if (preferences?.travelStyle === 'luxury') {
+  } else if (preferences?.travelStyle?.type === 'luxury') {
     return budgetRanges.slice(2);
   }
 
@@ -321,20 +361,20 @@ function extractFavoriteDestinations(trips: any[]) {
   });
 
   return Object.entries(destinations)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .map(([name, count]) => ({ name, count }));
 }
 
 function calculateAverageDuration(trips: any[]) {
   if (trips.length === 0) return 0;
-  
+
   const durations = trips.map(trip => {
     const duration = trip.tripDetail?.trip_plan?.duration;
     return parseInt(duration?.replace(/\D/g, '') || '0');
   }).filter(d => d > 0);
 
-  return durations.length > 0 
+  return durations.length > 0
     ? Math.round(durations.reduce((sum, d) => sum + d, 0) / durations.length)
     : 0;
 }
@@ -369,11 +409,11 @@ function calculateTravelFrequency(trips: any[]) {
 
 function calculateSeasonalPreferences(trips: any[]) {
   const seasons: { [key: string]: number } = { spring: 0, summer: 0, fall: 0, winter: 0 };
-  
+
   trips.forEach(trip => {
     const tripDate = new Date(trip._creationTime);
     const month = tripDate.getMonth();
-    
+
     if (month >= 2 && month <= 4) seasons.spring++;
     else if (month >= 5 && month <= 7) seasons.summer++;
     else if (month >= 8 && month <= 10) seasons.fall++;
@@ -385,7 +425,7 @@ function calculateSeasonalPreferences(trips: any[]) {
 
 function calculateGroupSizePreferences(trips: any[]) {
   const groupSizes: { [key: string]: number } = {};
-  
+
   trips.forEach(trip => {
     const groupSize = trip.tripDetail?.trip_plan?.group_size || 'Unknown';
     groupSizes[groupSize] = (groupSizes[groupSize] || 0) + 1;

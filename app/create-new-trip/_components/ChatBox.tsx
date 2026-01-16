@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import axios from 'axios'
-import { Loader, Send, Volume2 } from 'lucide-react'
+import { Loader, Send, Volume2, Bot, FileText } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useVoiceConversation } from '@/hooks/use-voice-conversation'
 import { VoiceMicButton, VoiceStatus } from '@/components/ui/voice-components'
@@ -15,6 +15,7 @@ import SelectDays from './SelectDaysUi'
 import FinalUi from './FinalUi'
 import HotelBudgetUI from './HotelBudgetUI'
 import HotelBookingUI from './HotelBookingUI'
+import FlightBookingUI from './FlightBookingUI'
 import { useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { useTripDetail, useUserDetail } from '@/app/provider'
@@ -29,6 +30,9 @@ type Message = {
     intent?: string
     hotels?: any[]
     location?: string
+    flights?: any[]
+    route?: { from: string, to: string }
+    budget?: number
 }
 
 export type TripInfo = {
@@ -75,7 +79,7 @@ export type Itinerary = {
     activities: Activity[]
 }
 
-function ChatBox() {
+const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
     const [messages, setMessages] = useState<Message[]>([])
     const [userInput, setUserInput] = useState<string>('')
     const [loading, setLoading] = useState(false)
@@ -102,6 +106,16 @@ function ChatBox() {
         groupSize: ''
     })
 
+    // Expose sendMessage to parent
+    React.useImperativeHandle(ref, () => ({
+        sendMessage: (text: string) => {
+            setUserInput(text);
+            // We need to wait for state update before sending, or just pass text directly to a new internal send function
+            // Best to refactor onSend to accept an argument
+            triggerSend(text);
+        }
+    }));
+
     // Voice Conversation Integration (Speech Recognition + Text-to-Speech)
     const [voiceState, voiceControls] = useVoiceConversation({
         continuous: true,
@@ -114,14 +128,14 @@ function ChatBox() {
             // Set the input for any transcript with reasonable length
             if (transcript.length > 3) {
                 setUserInput(transcript)
-                
+
                 // Auto-send if confidence is above 60%
                 if (confidence > 0.6) {
                     // Stop listening immediately
                     voiceControls.stopListening()
                     // Use requestAnimationFrame to ensure state is updated before sending
                     requestAnimationFrame(() => {
-                        onSend()
+                        triggerSend(transcript)
                     })
                 }
             }
@@ -151,51 +165,17 @@ function ChatBox() {
         const query = searchParams.get('query')
         if (query && !initialQueryProcessed && messages.length === 0) {
             setInitialQueryProcessed(true)
-            setUserInput(query)
-            // Auto-send after a short delay to ensure component is ready
-            setTimeout(() => {
-                const newMsg: Message = {
-                    role: 'user',
-                    content: query
-                }
-                setMessages([newMsg])
-                setLoading(true)
-                
-                axios.post('/api/aimodel', {
-                    messages: [newMsg],
-                    isFinal: false
-                }).then((result) => {
-                    const { resp, ui, intent } = result.data || {}
-                    setMessages((prev) => [...prev, { 
-                        role: 'assistant', 
-                        content: resp, 
-                        ui,
-                        intent 
-                    }])
-                    
-                    if (voiceState.voiceEnabled && resp) {
-                        voiceControls.speak(resp.replace(/\*\*/g, '').replace(/\*/g, '').trim()).catch(() => {})
-                    }
-                }).catch((error) => {
-                    console.error('Error:', error)
-                    setMessages((prev) => [...prev, { 
-                        role: 'assistant', 
-                        content: '❌ Something went wrong. Please try again.' 
-                    }])
-                }).finally(() => {
-                    setLoading(false)
-                    setUserInput('')
-                })
-            }, 500)
+            triggerSend(query)
         }
-    }, [searchParams, initialQueryProcessed, messages.length, voiceState.voiceEnabled, voiceControls])
+    }, [searchParams, initialQueryProcessed, messages.length])
 
-    const onSend = async () => {
-        if (!userInput.trim()) return
+
+    const triggerSend = async (text: string, isFinalOverride?: boolean) => {
+        if (!text.trim()) return
 
         const newMsg: Message = {
             role: 'user',
-            content: userInput
+            content: text
         }
 
         setMessages((prev) => [...prev, newMsg])
@@ -205,62 +185,182 @@ function ChatBox() {
         try {
             const result = await axios.post('/api/aimodel', {
                 messages: [...messages, newMsg],
-                isFinal
+                isFinal: isFinalOverride ?? isFinal
             })
 
             const { resp, ui, trip_plan, intent, location } = result.data || {}
+
+            // Handle flight search flow
+            if (intent === 'flight') {
+                if (ui === 'flightSearch') {
+                    setMessages((prev) => [...prev, {
+                        role: 'assistant',
+                        content: resp,
+                        ui: 'loading', // Show loading while we fetch real flights
+                        intent
+                    }])
+
+                    // Extract flight details from conversation
+                    const fullHistory = [...messages, newMsg];
+                    let from = '', to = '', date = '', budget = 0;
+                    let lastQuestion = null;
+
+                    for (const msg of fullHistory) {
+                        const content = msg.content.toLowerCase();
+
+                        if (msg.role === 'assistant') {
+                            if (content.match(/flying from|departure city/)) lastQuestion = 'from';
+                            else if (content.match(/fly to|where to|destination/)) lastQuestion = 'to';
+                            else if (content.match(/when|date|traveling/)) lastQuestion = 'date';
+                            else lastQuestion = null;
+                        } else {
+                            // 1. Explicit Regex
+                            const fromMatch = content.match(/(?:from)\s+([a-z\s]+)(?:to|$)/i);
+                            if (fromMatch) {
+                                from = fromMatch[1].trim().replace(/\b(to)\b/gi, '').trim();
+                                lastQuestion = null;
+                            }
+
+                            const toMatch = content.match(/(?:to|fly to|going to)\s+([a-z\s]+)(?:from|$)/i);
+                            if (toMatch) {
+                                to = toMatch[1].trim().replace(/\b(from)\b/gi, '').trim();
+                                lastQuestion = null;
+                            }
+
+                            const dateMatch = content.match(/(\d{4}-\d{2}-\d{2}|\d{1,2}(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*|today|tomorrow|next\s+[a-z]+)/i);
+                            if (dateMatch) {
+                                date = dateMatch[0];
+                                lastQuestion = null;
+                            }
+
+                            // Budget Extraction (Cumulative, take latest)
+                            const budgetMatch = content.match(/(?:below|under|less than|budget|price)\s*(?:₹|rs\.?|inr)?\s*(\d+(?:,\d+)*(?:k)?)/i);
+                            if (budgetMatch) {
+                                let valRaw = budgetMatch[1].toLowerCase().replace(/,/g, '');
+                                if (valRaw.includes('k')) valRaw = valRaw.replace('k', '000');
+                                budget = parseInt(valRaw);
+                            }
+
+                            // 2. Contextual Extraction
+                            const cleanContent = content.replace(/\b(to|from|go|fly|flight|please|i|want|will|be)\b/gi, '').trim();
+
+                            if (lastQuestion === 'from' && !from && cleanContent.length > 2) from = cleanContent;
+                            else if (lastQuestion === 'to' && !to && cleanContent.length > 2) to = cleanContent;
+                            else if (lastQuestion === 'date' && !date && cleanContent.length > 2) date = cleanContent;
+                        }
+                    }
+
+                    // Defaults if extraction fails (fallback to Pune -> Delhi tomorrow)
+                    const searchPayload = {
+                        from: from || 'Pune',
+                        to: to || 'Delhi',
+                        date: date || 'tomorrow',
+                        passengers: 1,
+                        budget // Pass budget to API too if needed later, but used in UI filtering for now
+                    };
+
+                    console.log('✈️ Searching flights:', searchPayload);
+
+                    try {
+                        const flightResult = await axios.post('/api/flights/search', searchPayload);
+                        const flights = flightResult.data.flights || [];
+
+                        setMessages((prev) => {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = {
+                                role: 'assistant',
+                                content: `Here are the best flights from ${searchPayload.from} to ${searchPayload.to} for ${searchPayload.date}:`,
+                                ui: 'flightResults',
+                                intent: 'flight',
+                                // Store flight data in message
+                                // @ts-ignore
+                                flights: flights,
+                                route: { from: searchPayload.from, to: searchPayload.to },
+                                budget: budget > 0 ? budget : undefined
+                            };
+                            return updated;
+                        });
+
+                        if (voiceState.voiceEnabled) {
+                            voiceControls.speak(`I found ${flights.length} flights for you. ${budget > 0 ? 'Filtering by your budget of ' + budget : ''} The best option starts at ${flights[0]?.price || 'an unknown'} rupees.`).catch(() => { })
+                        }
+
+                    } catch (error) {
+                        console.error('Flight search error:', error);
+                        setMessages((prev) => {
+                            const updated = [...prev];
+                            updated[updated.length - 1] = {
+                                role: 'assistant',
+                                content: "Sorry, I couldn't find any flights at the moment. Please try again.",
+                                ui: null,
+                                intent: 'flight'
+                            };
+                            return updated;
+                        });
+                    }
+                    setLoading(false);
+                    return;
+                }
+            }
 
             // Handle hotel booking flow
             if (intent === 'hotel') {
                 if (ui === 'hotelBudget') {
                     // Store location from API response
-                    const hotelLocation = location || userInput.trim();
-                    
-                    setMessages((prev) => [...prev, { 
-                        role: 'assistant', 
-                        content: resp, 
+                    const hotelLocation = location || text.trim();
+
+                    setMessages((prev) => [...prev, {
+                        role: 'assistant',
+                        content: resp,
                         ui,
                         intent,
                         location: hotelLocation
                     }])
-                    
+
                     if (voiceState.voiceEnabled && resp) {
-                        voiceControls.speak(resp.replace(/\*\*/g, '').replace(/\*/g, '').trim()).catch(() => {})
+                        voiceControls.speak(resp.replace(/\*\*/g, '').replace(/\*/g, '').trim()).catch(() => { })
                     }
                 } else if (ui === 'hotelSearch') {
                     // Get location from the API response or find it in conversation
                     let searchLocation = location;
-                    
+
                     if (!searchLocation) {
                         // Find location from previous messages
                         const locationMsg = messages.slice().reverse().find(m => m.location);
                         searchLocation = locationMsg?.location;
                     }
-                    
+
                     if (!searchLocation) {
                         // Try to extract from user's messages
-                        const userMessages = messages.filter(m => m.role === 'user');
-                        for (const msg of userMessages.reverse()) {
-                            const cityMatch = msg.content.match(/(?:hotel in|find hotel in|book hotel in|in)\s+([a-z\s]+)/i);
-                            if (cityMatch) {
-                                searchLocation = cityMatch[1].trim();
-                                break;
+                        // Using passed text if recent
+                        const cityMatch = text.match(/(?:hotel in|find hotel in|book hotel in|in)\s+([a-z\s]+)/i);
+                        if (cityMatch) {
+                            searchLocation = cityMatch[1].trim();
+                        } else {
+                            // Fallback to history
+                            const userMessages = messages.filter(m => m.role === 'user');
+                            for (const msg of userMessages.reverse()) {
+                                const cityMatch = msg.content.match(/(?:hotel in|find hotel in|book hotel in|in)\s+([a-z\s]+)/i);
+                                if (cityMatch) {
+                                    searchLocation = cityMatch[1].trim();
+                                    break;
+                                }
                             }
                         }
                     }
-                    
+
                     const finalLocation = searchLocation || 'Pune';
                     console.log('🔍 Searching hotels in:', finalLocation);
-                    
-                    const budget = userInput.toLowerCase();
-                    
-                    setMessages((prev) => [...prev, { 
-                        role: 'assistant', 
-                        content: `Searching for hotels in ${finalLocation}...`, 
+
+                    const budget = text.toLowerCase();
+
+                    setMessages((prev) => [...prev, {
+                        role: 'assistant',
+                        content: `Searching for hotels in ${finalLocation}...`,
                         ui: 'loading',
-                        intent 
+                        intent
                     }])
-                    
+
                     try {
                         // Call hotel search API
                         const hotelResult = await axios.post('/api/search-hotels', {
@@ -269,10 +369,10 @@ function ChatBox() {
                             checkIn: new Date().toISOString().split('T')[0],
                             checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0]
                         })
-                        
+
                         console.log('📦 Hotel API response:', hotelResult.data);
                         const hotels = hotelResult.data.hotels || []
-                        
+
                         // Update the loading message with actual results
                         setMessages((prev) => {
                             const updated = [...prev]
@@ -286,9 +386,9 @@ function ChatBox() {
                             }
                             return updated
                         })
-                        
+
                         if (voiceState.voiceEnabled) {
-                            voiceControls.speak(`Found ${hotels.length} hotels in ${finalLocation} within your budget`).catch(() => {})
+                            voiceControls.speak(`Found ${hotels.length} hotels in ${finalLocation} within your budget`).catch(() => { })
                         }
                     } catch (error) {
                         console.error('Hotel search error:', error)
@@ -304,18 +404,18 @@ function ChatBox() {
                         })
                     }
                 } else {
-                    setMessages((prev) => [...prev, { 
-                        role: 'assistant', 
-                        content: resp, 
+                    setMessages((prev) => [...prev, {
+                        role: 'assistant',
+                        content: resp,
                         ui,
-                        intent 
+                        intent
                     }])
-                    
+
                     if (voiceState.voiceEnabled && resp) {
-                        voiceControls.speak(resp.replace(/\*\*/g, '').replace(/\*/g, '').trim()).catch(() => {})
+                        voiceControls.speak(resp.replace(/\*\*/g, '').replace(/\*/g, '').trim()).catch(() => { })
                     }
                 }
-                
+
                 setLoading(false)
                 return
             }
@@ -323,7 +423,7 @@ function ChatBox() {
             // Handle trip planning flow (existing code)
             if (!isFinal && resp) {
                 setMessages((prev) => [...prev, { role: 'assistant', content: resp, ui }])
-                
+
                 // Speak the AI response if voice is enabled
                 if (voiceState.voiceEnabled && resp) {
                     // Clean up the response for better speech output
@@ -333,7 +433,7 @@ function ChatBox() {
                         .replace(/`/g, '') // Remove code markers
                         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Convert links to text
                         .trim()
-                    
+
                     // Speak the response
                     voiceControls.speak(cleanedResp).catch(err => {
                         console.error('Text-to-speech error:', err)
@@ -345,8 +445,7 @@ function ChatBox() {
                 const tripId = uuidv4()
                 await SaveTripDetail({
                     tripDetail: trip_plan,
-                    tripId,
-                    uid: userDetail?._id
+                    tripId
                 })
                 setTripId(tripId)
                 setTripDetail(trip_plan)
@@ -369,18 +468,25 @@ function ChatBox() {
         }
     }
 
+    // Keep original onSend for internal input usage
+    const onSend = () => triggerSend(userInput);
+
     const RenderGenerativeUi = (ui?: string | null) => {
         if (!ui) return null;
-        
+
         switch (ui) {
             case 'budget':
-                return <BudgetUi onSelectedOption={(v: string) => { setUserInput(v); onSend() }} />
+                return <BudgetUi onSelectedOption={(v: string) => { setUserInput(v); triggerSend(v) }} />
             case 'groupSize':
-                return <GroupSizeUi onSelectedOption={(v: string) => { setUserInput(v); onSend() }} />
+                return <GroupSizeUi onSelectedOption={(v: string) => { setUserInput(v); triggerSend(v) }} />
             case 'tripDuration':
-                return <SelectDays onSelectedOption={(v: string) => { setUserInput(v); onSend() }} />
+                return <SelectDays onSelectedOption={(v: string) => { setUserInput(v); triggerSend(v) }} />
             case 'hotelBudget':
-                return <HotelBudgetUI onSelectedOption={(v: string) => { setUserInput(v); onSend() }} />
+                return <HotelBudgetUI onSelectedOption={(v: string) => { setUserInput(v); triggerSend(v) }} />
+            case 'flightResults':
+                // @ts-ignore
+                // We don't render it here, we render it in the map loop for full width
+                return null;
             case 'final':
                 return <FinalUi viewTrip={() => router.push('/view-trip/' + _tripId)} disable={!tripDetail} />
             default:
@@ -393,64 +499,119 @@ function ChatBox() {
         const lastMsg = messages[messages.length - 1]
         if (lastMsg?.ui === 'final' && !isFinal) {
             setIsFinal(true)
-            setUserInput('Ok, Great!')
+            triggerSend('Ok, Great!', true)
         }
     }, [messages, isFinal])
 
-    // Auto-send confirmation message only once
-    useEffect(() => {
-        if (isFinal && userInput) {
-            const timeout = setTimeout(onSend, 300) // debounce to avoid duplicate call
-            return () => clearTimeout(timeout)
-        }
-    }, [isFinal, userInput])
-
     return (
-        <div className='h-[85vh] flex flex-col border border-border shadow-lg rounded-2xl p-5 bg-card'>
+        <div className='h-full flex flex-col bg-white dark:bg-gray-800'>
             {messages.length === 0 && (
-                <EmptyBoxState onSelectOption={(v: string) => { setUserInput(v); onSend() }} />
+                <div className='flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500'>
+                    <div className="max-w-2xl w-full text-center space-y-8">
+                        <div className="flex items-center justify-center gap-3 mb-2">
+                            <div className="bg-blue-600 rounded-2xl p-3 shadow-lg shadow-blue-600/20">
+                                <FileText className="w-8 h-8 text-white" />
+                            </div>
+                            <div className="text-left">
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Itinerary Generator</h1>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Let AI create personalized day-by-day travel plans</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-[32px] p-10 shadow-xl shadow-blue-900/5">
+                            <div className="flex flex-col items-center gap-6">
+                                <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-2">
+                                    <FileText className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div className="space-y-3 max-w-lg">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create Your Perfect Itinerary</h2>
+                                    <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        Tell us about your trip and we'll generate a detailed day-by-day itinerary with activities, dining, and budget planning
+                                    </p>
+                                </div>
+                                <Button
+                                    className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg hover:translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 mt-2"
+                                    onClick={() => setUserInput("Help me plan a trip")}
+                                >
+                                    Start Planning with AI
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Messages */}
-            <section className='flex-1 overflow-y-auto p-4 space-y-3'>
+            <section className='flex-1 overflow-y-auto px-4 py-6 space-y-6'>
                 {messages.map((msg, index) => (
                     <React.Fragment key={index}>
                         {/* Regular Message */}
-                        {msg.ui !== 'hotelResults' && (
-                            <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-lg px-4 py-3 rounded-lg shadow-sm ${
-                                    msg.role === 'user' 
-                                        ? 'bg-primary text-primary-foreground' 
-                                        : 'bg-muted text-muted-foreground border border-border'
-                                }`}>
-                                    <div className="text-sm leading-relaxed">{msg.content}</div>
+                        {msg.ui !== 'hotelResults' && msg.ui !== 'flightResults' && (
+                            <div className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                {/* Avatar for AI */}
+                                {msg.role === 'assistant' && (
+                                    <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
+                                        <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                                    </div>
+                                )}
+
+                                <div className={`max-w-xs lg:max-w-md px-5 py-3.5 shadow-sm ${msg.role === 'user'
+                                    ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
+                                    : 'bg-white dark:bg-card border border-border/50 text-foreground rounded-2xl rounded-tl-sm'
+                                    }`}>
+                                    <div className="text-[15px] leading-relaxed">{msg.content}</div>
                                     {RenderGenerativeUi(msg.ui)}
                                 </div>
+
+                                {/* Avatar for User */}
+                                {msg.role === 'user' && (
+                                    <div className='w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-1 border border-border'>
+                                        <span className='text-xs font-bold text-gray-600 dark:text-gray-300'>YOU</span>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {/* Hotel Results Display - Full Width */}
                         {msg.ui === 'hotelResults' && msg.hotels && msg.location && (
-                            <div className='w-full'>
-                                <div className='flex justify-start mb-2'>
-                                    <div className='max-w-lg px-4 py-3 rounded-lg shadow-sm bg-muted text-muted-foreground border border-border'>
-                                        <div className="text-sm leading-relaxed">{msg.content}</div>
+                            <div className='w-full pl-12 pr-4'>
+                                <div className='mb-4 max-w-lg'>
+                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
                                     </div>
                                 </div>
                                 <HotelBookingUI hotels={msg.hotels} location={msg.location} />
+                            </div>
+                        )}
+
+                        {/* Flight Results Display - Full Width */}
+                        {msg.ui === 'flightResults' && msg.flights && (
+                            <div className='w-full pl-12 pr-4'>
+                                <div className='mb-4 max-w-lg'>
+                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
+                                    </div>
+                                </div>
+                                <div className='w-full'>
+                                    {/* @ts-ignore */}
+                                    <FlightBookingUI flights={msg.flights} route={msg.route || { from: '', to: '' }} budget={msg.budget} />
+                                </div>
                             </div>
                         )}
                     </React.Fragment>
                 ))}
 
                 {loading && (
-                    <div className='flex justify-start'>
-                        <div className='max-w-lg bg-muted text-muted-foreground px-4 py-3 rounded-lg flex items-center gap-2 border border-border shadow-sm'>
-                            <Loader className='animate-spin h-4 w-4 text-primary' /> 
-                            <span className="text-sm">
-                              {userInput.toLowerCase().includes('hotel') ? 'Searching real-time hotels...' :
-                               userInput.toLowerCase().includes('flight') ? 'Finding live flights...' :
-                               isFinal ? 'Generating your trip plan...' : 'Thinking...'}
+                    <div className='flex gap-4 justify-start'>
+                        <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
+                            <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                        </div>
+                        <div className='bg-white dark:bg-card text-foreground px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 flex items-center gap-3 shadow-sm'>
+                            <Loader className='animate-spin h-4 w-4 text-blue-600' />
+                            <span className="text-sm font-medium text-muted-foreground">
+                                {userInput.toLowerCase().includes('hotel') ? 'Searching best hotels...' :
+                                    userInput.toLowerCase().includes('flight') ? 'Finding live flights...' :
+                                        isFinal ? 'Generating your itinerary...' : 'Thinking...'}
                             </span>
                         </div>
                     </div>
@@ -471,117 +632,96 @@ function ChatBox() {
                 />
             )}
 
-            {/* Smart Suggestions - Only show when starting a new conversation */}
-            {messages.length === 0 && hasData && (
-                <div className="px-4 pb-4">
-                    <SmartSuggestions
-                        currentDestination={currentTripData.destination}
-                        currentBudget={currentTripData.budget}
-                        currentDays={currentTripData.days}
-                        currentGroupSize={currentTripData.groupSize}
-                        onSuggestionApply={(type, value) => {
-                            if (type === 'destination') {
-                                setCurrentTripData(prev => ({ ...prev, destination: value }))
-                                setUserInput(`I want to travel to ${value}`)
-                            } else if (type === 'budget') {
-                                setCurrentTripData(prev => ({ ...prev, budget: value }))
-                                setUserInput(`My budget is $${value}`)
-                            } else if (type === 'groupSize') {
-                                setCurrentTripData(prev => ({ ...prev, groupSize: value }))
-                                setUserInput(`Group size: ${value}`)
-                            }
-                        }}
-                    />
-                </div>
-            )}
+            {/* Input - Conditionally Rendered */}
+            {!props.hideInput && (
+                <section className='p-4 pb-6 bg-transparent'>
+                    <div className='relative bg-white dark:bg-card rounded-2xl shadow-lg border border-border/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30'>
+                        {/* Voice Response Toggle & Stop Button */}
+                        {voiceState.isSupported && (
+                            <div className="absolute -top-10 right-0 flex items-center justify-end gap-2 mb-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 bg-white/80 dark:bg-card/80 backdrop-blur p-1 rounded-full border border-border/50 shadow-sm">
+                                    <button
+                                        onClick={voiceControls.toggleVoice}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${voiceState.voiceEnabled
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                                            }`}
+                                        title={voiceState.voiceEnabled ? 'AI voice replies enabled' : 'Click to enable AI voice replies'}
+                                    >
+                                        <Volume2 className="h-3.5 w-3.5" />
+                                        <span className="font-medium text-[11px]">
+                                            {voiceState.voiceEnabled ? 'Voice ON' : 'Voice OFF'}
+                                        </span>
+                                    </button>
+                                    {voiceState.isSpeaking && (
+                                        <span className="flex items-center gap-1.5 px-2 text-green-600 dark:text-green-400 font-medium text-[11px]">
+                                            <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
+                                            Speaking...
+                                        </span>
+                                    )}
+                                </div>
 
-            {/* Input */}
-            <section>
-                <div className='border border-border rounded-2xl p-4 relative bg-background shadow-sm'>
-                    {/* Voice Response Toggle & Stop Button */}
-                    {voiceState.isSupported && (
-                        <div className="flex items-center justify-between gap-2 mb-2 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={voiceControls.toggleVoice}
-                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${
-                                        voiceState.voiceEnabled 
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                                            : 'bg-muted hover:bg-muted/80'
-                                    }`}
-                                    title={voiceState.voiceEnabled ? 'AI voice replies enabled' : 'Click to enable AI voice replies'}
-                                >
-                                    <Volume2 className="h-3 w-3" />
-                                    <span className="font-medium">
-                                        {voiceState.voiceEnabled ? '🔊 AI Voice ON' : '🔇 AI Voice OFF'}
-                                    </span>
-                                </button>
+                                {/* Stop Speaking Button */}
                                 {voiceState.isSpeaking && (
-                                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                                        <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                                        Speaking...
-                                    </span>
+                                    <button
+                                        onClick={voiceControls.stopSpeaking}
+                                        className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card border border-red-200 text-red-600 hover:bg-red-50 shadow-sm transition-colors"
+                                        title="Stop AI from speaking"
+                                    >
+                                        <div className="h-2.5 w-2.5 bg-red-500 rounded-[1px]" />
+                                    </button>
                                 )}
                             </div>
-                            
-                            {/* Stop Speaking Button */}
-                            {voiceState.isSpeaking && (
-                                <button
-                                    onClick={voiceControls.stopSpeaking}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800 transition-colors font-medium"
-                                    title="Stop AI from speaking"
-                                >
-                                    <Volume2 className="h-4 w-4" />
-                                    Stop
-                                </button>
-                            )}
+                        )}
+
+                        <Textarea
+                            placeholder={
+                                voiceState.isListening
+                                    ? '🎤 Listening... (Speak now)'
+                                    : voiceState.voiceEnabled
+                                        ? 'Type or say your plan...'
+                                        : 'Ask me anything about your trip...'
+                            }
+                            className='w-full min-h-[60px] h-16 max-h-40 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-base text-foreground placeholder:text-muted-foreground/50 py-4 pl-4 pr-24 rounded-2xl'
+                            onChange={(e) => setUserInput(e.target.value)}
+                            value={userInput}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
+                            disabled={voiceState.isListening || voiceState.isSpeaking}
+                        />
+
+                        {/* Controls Container */}
+                        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                            {/* Voice Input Button */}
+                            <VoiceMicButton
+                                isListening={voiceState.isListening}
+                                isProcessing={voiceState.isProcessing}
+                                isSupported={voiceState.isSupported}
+                                error={voiceState.error}
+                                onClick={voiceControls.toggleListening}
+                                className=""
+                                size="sm"
+                                variant="ghost"
+                            />
+
+                            {/* Send Button */}
+                            <Button
+                                size='icon'
+                                className={`h-10 w-10 rounded-xl shadow-sm transition-all duration-200 ${!userInput.trim() && !loading
+                                    ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'
+                                    }`}
+                                onClick={onSend}
+                                disabled={loading || voiceState.isListening || voiceState.isSpeaking || (!userInput.trim() && !loading)}
+                            >
+                                {loading ? <Loader className='h-4 w-4 animate-spin' /> : <Send className='h-4 w-4' />}
+                            </Button>
                         </div>
-                    )}
-                    
-                    <Textarea
-                        placeholder={
-                            voiceState.isListening 
-                                ? '🎤 Listening... Speak now or type your message' 
-                                : voiceState.error && voiceState.error.includes('network')
-                                ? 'Voice temporarily unavailable - please type your travel plans here...'
-                                : voiceState.error
-                                ? 'Type your travel plans here (voice input unavailable)...'
-                                : voiceState.voiceEnabled
-                                ? '🎤 Speak or type your dream trip... (AI will reply with voice)'
-                                : '✍️ Describe your dream trip or use the voice button...'
-                        }
-                        className='w-full h-28 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-foreground placeholder:text-muted-foreground pr-20'
-                        onChange={(e) => setUserInput(e.target.value)}
-                        value={userInput}
-                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
-                        disabled={voiceState.isListening || voiceState.isSpeaking}
-                    />
-                    
-                    {/* Voice Input Button */}
-                    <VoiceMicButton
-                        isListening={voiceState.isListening}
-                        isProcessing={voiceState.isProcessing}
-                        isSupported={voiceState.isSupported}
-                        error={voiceState.error}
-                        onClick={voiceControls.toggleListening}
-                        className="absolute bottom-6 right-16"
-                        size="md"
-                        variant="ghost"
-                    />
-                    
-                    {/* Send Button */}
-                    <Button 
-                        size='icon' 
-                        className='absolute bottom-6 right-6 shadow-md' 
-                        onClick={onSend} 
-                        disabled={loading || voiceState.isListening || voiceState.isSpeaking}
-                    >
-                        <Send className='h-4 w-4' />
-                    </Button>
-                </div>
-            </section>
+                    </div>
+                </section>
+            )}
         </div>
     )
-}
+})
 
+ChatBox.displayName = 'ChatBox';
 export default ChatBox

@@ -5,24 +5,28 @@ import { ArrowBigLeft } from "lucide-react";
 export const CreateNewUser = mutation({
     args: {
         name: v.string(),
-        email: v.string(),
         imageUrl: v.string()
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            throw new Error("Unauthorized");
+        }
+
         // If User already exist?
         const user = await ctx.db.query('UserTable')
-            .filter((q) => q.eq(q.field('email'), args.email))
+            .filter((q) => q.eq(q.field('email'), identity.email))
             .collect();
 
         if (user?.length == 0) {
             const userData = {
                 name: args.name,
-                email: args.email,
+                email: identity.email!,
                 imageUrl: args.imageUrl
             }
             //If Not then create New user
-            const result = await ctx.db.insert('UserTable', userData);
-            return userData;
+            const userId = await ctx.db.insert('UserTable', userData);
+            return { ...userData, _id: userId };
         }
 
         return user[0];

@@ -14,7 +14,7 @@ export interface TravelPreferences {
   preferredDestinations: string[];
   preferredAirlines: string[];
   preferredHotelCategories: string[];
-  travelStyle: 'budget' | 'balanced' | 'luxury';
+  travelStyle: { type: string; pace?: string };
 }
 
 export interface TravelPatterns {
@@ -41,12 +41,12 @@ export const usePersonalization = () => {
   const userId = user?.id;
 
   // Queries
-  const preferences = useQuery(api.personalization.getUserPreferences, 
-    userId ? { userId } : "skip"
+  const preferences = useQuery(api.personalization.getUserPreferences,
+    userId ? {} : "skip"
   );
-  
+
   const travelPatterns = useQuery(api.personalization.getUserTravelPatterns,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   // Mutations
@@ -69,19 +69,19 @@ export const usePersonalization = () => {
 
   // Get recommendations
   const destinationRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "destinations" } : "skip"
+    userId ? { type: "destinations" } : "skip"
   );
 
   const budgetRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "budget" } : "skip"
+    userId ? { type: "budget" } : "skip"
   );
 
   const hotelRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "hotels" } : "skip"
+    userId ? { type: "hotels" } : "skip"
   );
 
   const travelStyleRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "travel_style" } : "skip"
+    userId ? { type: "travel_style" } : "skip"
   );
 
   // Update recommendations when data changes
@@ -97,9 +97,9 @@ export const usePersonalization = () => {
   // Learning functions
   const learnFromNewTrip = async (tripData: any) => {
     if (!userId) return;
-    
+
     try {
-      await learnFromTrip({ userId, tripData });
+      await learnFromTrip({ tripData });
     } catch (error) {
       console.error('Error learning from trip:', error);
     }
@@ -110,7 +110,6 @@ export const usePersonalization = () => {
 
     try {
       await recordInteraction({
-        userId,
         interactionType: actionType,
         data
       });
@@ -124,8 +123,8 @@ export const usePersonalization = () => {
 
     try {
       await updatePreferences({
-        userId,
-        ...newPreferences
+        ...newPreferences,
+        travelStyle: newPreferences.travelStyle?.type
       });
     } catch (error) {
       console.error('Error updating preferences:', error);
@@ -137,11 +136,11 @@ export const usePersonalization = () => {
     if (!preferences || !currentInput) return [];
 
     const suggestions = [...(preferences.preferredDestinations || [])];
-    
+
     // Add popular destinations based on travel style
-    if (preferences.travelStyle === 'luxury') {
+    if (preferences.travelStyle?.type === 'luxury') {
       suggestions.push('Dubai, UAE', 'Maldives', 'Swiss Alps', 'Monaco');
-    } else if (preferences.travelStyle === 'budget') {
+    } else if (preferences.travelStyle?.type === 'budget') {
       suggestions.push('Thailand', 'Portugal', 'Vietnam', 'Czech Republic');
     } else {
       suggestions.push('Paris, France', 'Tokyo, Japan', 'New York, USA', 'Barcelona, Spain');
@@ -157,11 +156,11 @@ export const usePersonalization = () => {
     if (!preferences || !travelPatterns) return 1000;
 
     const baseAmount = travelPatterns.preferredBudgetRange.average || 1000;
-    
+
     // Adjust based on destination (simplified logic)
     let multiplier = 1;
     const dest = destination.toLowerCase();
-    
+
     if (dest.includes('dubai') || dest.includes('maldives') || dest.includes('switzerland')) {
       multiplier = 2.5;
     } else if (dest.includes('thailand') || dest.includes('vietnam') || dest.includes('portugal')) {
@@ -171,9 +170,9 @@ export const usePersonalization = () => {
     }
 
     // Adjust based on travel style
-    if (preferences?.travelStyle === 'luxury') {
+    if (preferences?.travelStyle?.type === 'luxury') {
       multiplier *= 2;
-    } else if (preferences?.travelStyle === 'budget') {
+    } else if (preferences?.travelStyle?.type === 'budget') {
       multiplier *= 0.5;
     }
 
@@ -185,7 +184,7 @@ export const usePersonalization = () => {
 
     const groupPrefs = travelPatterns.groupSizePreferences;
     const mostCommon = Object.entries(groupPrefs)
-      .sort(([,a], [,b]) => (b as number) - (a as number))[0];
+      .sort(([, a], [, b]) => (b as number) - (a as number))[0];
 
     return mostCommon ? mostCommon[0] : 'Just Me';
   }, [travelPatterns?.groupSizePreferences]);
@@ -205,7 +204,7 @@ export const usePersonalization = () => {
     // Preference completeness (30%)
     let prefScore = 0;
     if (preferences.preferredDestinations?.length > 0) prefScore += 10;
-    if (preferences.travelStyle && preferences.travelStyle !== 'balanced') prefScore += 10;
+    if (preferences.travelStyle && preferences.travelStyle.type !== 'balanced') prefScore += 10;
     if (preferences.preferredBudget?.total && preferences.preferredBudget.total > 0) prefScore += 10;
     score += prefScore;
 
@@ -222,22 +221,22 @@ export const usePersonalization = () => {
     preferences: preferences as TravelPreferences | null,
     travelPatterns: travelPatterns as TravelPatterns | null,
     recommendations,
-    
+
     // Actions
     updateUserPreferences,
     learnFromNewTrip,
     recordUserAction,
-    
+
     // Smart suggestions
     getSmartDestinationSuggestion,
     getSmartBudgetSuggestion,
     getPersonalizedGroupSize,
     getRecommendationConfidence,
-    
+
     // Loading states
     isLoading: preferences === undefined || travelPatterns === undefined,
     hasData: !!preferences && !!travelPatterns,
-    
+
     // Utils
     userId
   };

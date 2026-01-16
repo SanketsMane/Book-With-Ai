@@ -4,29 +4,42 @@ import { mutation, query } from "./_generated/server";
 export const CreateTripDetail = mutation({
     args: {
         tripId: v.string(),
-        uid: v.id('UserTable'),
         tripDetail: v.any()
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const user = await ctx.db.query('UserTable')
+            .filter(q => q.eq(q.field('email'), identity.email))
+            .first();
+
+        if (!user) throw new Error("User not found");
+
         const result = await ctx.db.insert('TripDetailTable', {
             tripDetail: args.tripDetail,
             tripId: args.tripId,
-            uid: args.uid
+            uid: user._id
         });
-
     }
 })
 
 export const GetUserTrips = query({
-    args: {
-        uid: v.id('UserTable')
-    },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
+        const user = await ctx.db.query('UserTable')
+            .filter(q => q.eq(q.field('email'), identity.email))
+            .first();
+
+        if (!user) return [];
+
         const result = await ctx.db.query('TripDetailTable')
-            .filter(q => q.eq(q.field('uid'), args.uid))
+            .filter(q => q.eq(q.field('uid'), user._id))
             .order('desc')
             .collect();
-
 
         return result;
     }
@@ -34,13 +47,21 @@ export const GetUserTrips = query({
 
 export const GetTripById = query({
     args: {
-        uid: v.id('UserTable'),
         tripid: v.string()
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const user = await ctx.db.query('UserTable')
+            .filter(q => q.eq(q.field('email'), identity.email))
+            .first();
+
+        if (!user) throw new Error("User not found");
+
         const result = await ctx.db.query('TripDetailTable')
             .filter(q => q.and(
-                q.eq(q.field('uid'), args.uid),
+                q.eq(q.field('uid'), user._id),
                 q.eq(q.field('tripId'), args?.tripid)
             ))
             .collect();

@@ -39,16 +39,19 @@ export const SelectHotelBudgetOptions = [
 function HotelBudgetUI({ onSelectedOption }: any) {
     return (
         <div>
-            <div className='grid grid-cols-2 md:grid-cols-4 gap-3 items-center mt-1'>
+            <div className='grid grid-cols-2 md:grid-cols-4 gap-4 items-center mt-2'>
                 {SelectHotelBudgetOptions.map((item, index) => (
-                    <div key={index} className='p-4 border rounded-2xl
-                             bg-white hover:border-primary cursor-pointer flex flex-col items-center text-center
-                             transition-all duration-200 hover:shadow-md'
+                    <div key={index}
+                        className={`p-4 rounded-xl border-2 cursor-pointer flex flex-col items-center text-center transition-all duration-200 group
+                        ${item.range === 'luxury' ? 'bg-amber-50 border-amber-100 hover:border-amber-300' :
+                                item.range === 'high' ? 'bg-purple-50 border-purple-100 hover:border-purple-300' :
+                                    item.range === 'medium' ? 'bg-blue-50 border-blue-100 hover:border-blue-300' :
+                                        'bg-green-50 border-green-100 hover:border-green-300'} hover:shadow-md hover:-translate-y-1`}
                         onClick={() => onSelectedOption(item.range)}
                     >
-                        <div className={`text-4xl p-3 rounded-full ${item.color}`}>{item.icon}</div>
-                        <h2 className='text-lg font-semibold mt-2'>{item.title}</h2>
-                        <p className='text-xs text-gray-500 mt-1'>{item.desc}</p>
+                        <div className={`text-3xl p-3 bg-white rounded-full shadow-sm mb-2 group-hover:scale-110 transition-transform`}>{item.icon}</div>
+                        <h2 className='text-base font-bold text-gray-800'>{item.title}</h2>
+                        <p className='text-[10px] text-gray-500 font-medium px-2 py-1 rounded-full bg-white/60 mt-1'>{item.desc}</p>
                     </div>
                 ))}
             </div>

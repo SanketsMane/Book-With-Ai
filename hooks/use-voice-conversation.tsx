@@ -9,7 +9,7 @@ interface VoiceConversationState {
   confidence: number
   error: string | null
   isSupported: boolean
-  
+
   // Text-to-Speech
   isSpeaking: boolean
   speechQueue: string[]
@@ -22,7 +22,7 @@ interface VoiceConversationControls {
   stopListening: () => void
   resetTranscript: () => void
   toggleListening: () => void
-  
+
   // Text-to-Speech
   speak: (text: string) => Promise<void>
   stopSpeaking: () => void
@@ -42,7 +42,7 @@ interface UseVoiceConversationOptions {
   onEnd?: () => void
   autoSend?: boolean
   maxDuration?: number
-  
+
   // Text-to-Speech options
   voiceEnabled?: boolean
   voicePitch?: number
@@ -65,7 +65,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
     onEnd,
     autoSend = false,
     maxDuration = 60000,
-    
+
     // TTS options
     voiceEnabled: initialVoiceEnabled = false,
     voicePitch = 1,
@@ -98,7 +98,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      
+
       if (SpeechRecognition) {
         try {
           recognition.current = new SpeechRecognition()
@@ -110,17 +110,17 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
           setState(prev => ({ ...prev, isSupported: true }))
         } catch (error) {
           console.warn('Speech recognition initialization failed:', error)
-          setState(prev => ({ 
-            ...prev, 
-            isSupported: false, 
-            error: 'Voice recognition not available on this device' 
+          setState(prev => ({
+            ...prev,
+            isSupported: false,
+            error: 'Voice recognition not available on this device'
           }))
         }
       } else {
-        setState(prev => ({ 
-          ...prev, 
-          isSupported: false, 
-          error: 'Speech recognition not supported in this browser' 
+        setState(prev => ({
+          ...prev,
+          isSupported: false,
+          error: 'Speech recognition not supported in this browser'
         }))
       }
 
@@ -185,7 +185,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current)
       }
-      
+
       silenceTimeoutRef.current = setTimeout(() => {
         if (finalTranscript) {
           stopListening()
@@ -194,15 +194,15 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
     }
 
     const handleStart = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isListening: true, 
-        isProcessing: true, 
+      setState(prev => ({
+        ...prev,
+        isListening: true,
+        isProcessing: true,
         error: null,
         transcript: '',
         confidence: 0
       }))
-      
+
       onStart?.()
 
       timeoutRef.current = setTimeout(() => {
@@ -211,12 +211,12 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
     }
 
     const handleEnd = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isListening: false, 
-        isProcessing: false 
+      setState(prev => ({
+        ...prev,
+        isListening: false,
+        isProcessing: false
       }))
-      
+
       onEnd?.()
 
       if (timeoutRef.current) {
@@ -229,7 +229,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
 
     const handleError = (event: any) => {
       let errorMessage = ''
-      
+
       switch (event.error) {
         case 'no-speech':
           errorMessage = 'No speech detected. Try speaking closer to your microphone.'
@@ -253,13 +253,13 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
           errorMessage = `Voice input error: ${event.error}. Please use text input.`
       }
 
-      setState(prev => ({ 
-        ...prev, 
-        error: errorMessage, 
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
         isListening: false,
         isProcessing: false
       }))
-      
+
       if (errorMessage && onError) {
         const silentErrors = ['network', 'service-not-allowed', 'no-speech', 'aborted']
         if (!silentErrors.includes(event.error)) {
@@ -286,9 +286,9 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
   // Speech Recognition Controls
   const startListening = useCallback(() => {
     if (!recognition.current || !state.isSupported) {
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Voice recognition not available on this device' 
+      setState(prev => ({
+        ...prev,
+        error: 'Voice recognition not available on this device'
       }))
       return
     }
@@ -298,9 +298,9 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
     }
 
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Voice recognition requires an internet connection' 
+      setState(prev => ({
+        ...prev,
+        error: 'Voice recognition requires an internet connection'
       }))
       return
     }
@@ -316,16 +316,16 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
       recognition.current.start()
     } catch (error: any) {
       let errorMessage = 'Failed to start voice recognition'
-      
+
       if (error.name === 'InvalidStateError') {
         errorMessage = 'Voice recognition is already active'
       } else if (error.name === 'NotAllowedError') {
         errorMessage = 'Microphone permission denied'
       }
-      
-      setState(prev => ({ 
-        ...prev, 
-        error: errorMessage 
+
+      setState(prev => ({
+        ...prev,
+        error: errorMessage
       }))
     }
   }, [state.isSupported, state.isListening, state.isSpeaking])
@@ -337,11 +337,11 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
   }, [state.isListening])
 
   const resetTranscript = useCallback(() => {
-    setState(prev => ({ 
-      ...prev, 
-      transcript: '', 
-      confidence: 0, 
-      error: null 
+    setState(prev => ({
+      ...prev,
+      transcript: '',
+      confidence: 0,
+      error: null
     }))
   }, [])
 
@@ -365,7 +365,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
     return new Promise((resolve, reject) => {
       try {
         const utterance = new SpeechSynthesisUtterance(text)
-        
+
         // Configure voice settings
         utterance.pitch = voicePitch
         utterance.rate = voiceRate
@@ -374,12 +374,12 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
 
         // Get available voices and select best one
         const voices = synthesis.current!.getVoices()
-        const preferredVoice = voices.find(voice => 
+        const preferredVoice = voices.find(voice =>
           voice.lang.startsWith(language.split('-')[0]) && voice.name.includes('Google')
-        ) || voices.find(voice => 
+        ) || voices.find(voice =>
           voice.lang.startsWith(language.split('-')[0])
         ) || voices[0]
-        
+
         if (preferredVoice) {
           utterance.voice = preferredVoice
         }
@@ -401,7 +401,7 @@ export function useVoiceConversation(options: UseVoiceConversationOptions = {}):
           if (event.error && event.error !== 'interrupted' && event.error !== 'canceled') {
             console.error('Speech synthesis error:', event.error)
           }
-          reject(event)
+          reject(event.error || 'Speech synthesis failed')
         }
 
         synthesis.current!.speak(utterance)
