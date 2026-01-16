@@ -28,9 +28,7 @@ export default function PersonalizationPage() {
   const GetUserTrips = async () => {
     try {
       setLoading(true)
-      const result = await convex.query(api.tripDetail.GetUserTrips, {
-        uid: userDetail?._id
-      })
+      const result = await convex.query(api.tripDetail.GetUserTrips, {})
       setMyTrips(result || [])
     } catch (error) {
       console.error('Error fetching trips:', error)
@@ -112,9 +110,9 @@ export default function PersonalizationPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <p className="text-muted-foreground">
-                  Our AI learns from your {myTrips.length} trip{myTrips.length !== 1 ? 's' : ''} to provide increasingly 
+                  Our AI learns from your {myTrips.length} trip{myTrips.length !== 1 ? 's' : ''} to provide increasingly
                   accurate recommendations. The more you use Book With Ai, the smarter your suggestions become.
                 </p>
               </CardContent>
@@ -132,7 +130,7 @@ export default function PersonalizationPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
-                  Plan your first trip to unlock AI-powered recommendations! Our system learns from your 
+                  Plan your first trip to unlock AI-powered recommendations! Our system learns from your
                   travel patterns and preferences to provide smarter suggestions with every trip.
                 </p>
                 <div className="flex gap-4">
@@ -236,7 +234,7 @@ export default function PersonalizationPage() {
               <div className="text-center space-y-2">
                 <h3 className="font-medium">🔒 Your Privacy is Protected</h3>
                 <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-                  All personalization data is encrypted and stored securely. We never share your travel patterns 
+                  All personalization data is encrypted and stored securely. We never share your travel patterns
                   or personal information with third parties. You can delete your data at any time.
                 </p>
               </div>
