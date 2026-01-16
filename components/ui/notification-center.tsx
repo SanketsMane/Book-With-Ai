@@ -1,9 +1,9 @@
 "use client"
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Bell, BellRing, X, Check, AlertCircle, TrendingDown, Calendar, MapPin, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

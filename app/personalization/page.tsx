@@ -9,11 +9,11 @@ import Link from 'next/link'
 import { useConvex } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { useEffect, useState } from 'react'
-import { useUser } from '@clerk/nextjs'
+
 import { useUserDetail } from '../provider'
 
 export default function PersonalizationPage() {
-  const { user } = useUser()
+
   const { userDetail } = useUserDetail()
   const convex = useConvex()
   const [myTrips, setMyTrips] = useState<any[]>([])
