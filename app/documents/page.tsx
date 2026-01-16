@@ -11,7 +11,7 @@ import UploadDocumentModal from './_components/UploadDocumentModal'
 function Documents() {
     const { user, isLoaded } = useUser();
     const documents = useQuery(api.documents.getDocuments,
-        user ? { userId: user.id || "test_user_id" } : "skip"
+        user ? {} : "skip"
     );
 
     return (

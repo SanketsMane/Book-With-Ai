@@ -42,11 +42,11 @@ export const usePersonalization = () => {
 
   // Queries
   const preferences = useQuery(api.personalization.getUserPreferences,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   const travelPatterns = useQuery(api.personalization.getUserTravelPatterns,
-    userId ? { userId } : "skip"
+    userId ? {} : "skip"
   );
 
   // Mutations
@@ -69,19 +69,19 @@ export const usePersonalization = () => {
 
   // Get recommendations
   const destinationRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "destinations" } : "skip"
+    userId ? { type: "destinations" } : "skip"
   );
 
   const budgetRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "budget" } : "skip"
+    userId ? { type: "budget" } : "skip"
   );
 
   const hotelRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "hotels" } : "skip"
+    userId ? { type: "hotels" } : "skip"
   );
 
   const travelStyleRecs = useQuery(api.personalization.getPersonalizedRecommendations,
-    userId ? { userId, type: "travel_style" } : "skip"
+    userId ? { type: "travel_style" } : "skip"
   );
 
   // Update recommendations when data changes
@@ -99,7 +99,7 @@ export const usePersonalization = () => {
     if (!userId) return;
 
     try {
-      await learnFromTrip({ userId, tripData });
+      await learnFromTrip({ tripData });
     } catch (error) {
       console.error('Error learning from trip:', error);
     }
@@ -110,7 +110,6 @@ export const usePersonalization = () => {
 
     try {
       await recordInteraction({
-        userId,
         interactionType: actionType,
         data
       });
@@ -124,7 +123,6 @@ export const usePersonalization = () => {
 
     try {
       await updatePreferences({
-        userId,
         ...newPreferences,
         travelStyle: newPreferences.travelStyle?.type
       });

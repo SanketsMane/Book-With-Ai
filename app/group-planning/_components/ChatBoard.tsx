@@ -36,9 +36,7 @@ function ChatBoard({ tripId }: ChatBoardProps) {
         try {
             await sendMessage({
                 tripId,
-                userId: user.id || "test_user_id",
                 content: newMessage,
-                userName: user.fullName || "User" // Fallback name
             });
             setNewMessage('');
         } catch (error) {
@@ -69,8 +67,8 @@ function ChatBoard({ tripId }: ChatBoardProps) {
                         return (
                             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe
-                                        ? 'bg-pink-600 text-white rounded-br-none'
-                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'
+                                    ? 'bg-pink-600 text-white rounded-br-none'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'
                                     }`}>
                                     {!isMe && <p className="text-[10px] font-bold opacity-60 mb-1">{msg.userName}</p>}
                                     <p className="text-sm">{msg.content}</p>

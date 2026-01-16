@@ -29,11 +29,10 @@ function ExpenseSplitter({ tripId }: ExpenseSplitterProps) {
         if (!amount || !description || !user) return;
 
         await addExpense({
-            tripId,
-            description,
-            amount: parseFloat(amount),
-            paidBy: payer === 'me' ? (user.id || "test_user_id") : payer,
-            category: 'General', // Default category
+            tripId: tripId,
+            description: description, // Assuming 'newExpense' is not defined and using existing state
+            amount: parseFloat(amount), // Assuming 'newExpense' is not defined and using existing state
+            category: 'General', // Default category, assuming 'newExpense.category' is not defined
         });
         setOpen(false);
         setDescription('');

@@ -12,7 +12,7 @@ import AddFlightModal from './_components/AddFlightModal'
 function SavedFlights() {
     const { user, isLoaded } = useUser();
     const savedFlights = useQuery(api.saved_flights.getSavedFlights,
-        user ? { userId: user.id || "test_user_id" } : "skip"
+        user ? {} : "skip"
     );
 
     return (

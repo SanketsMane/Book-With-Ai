@@ -445,8 +445,7 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
                 const tripId = uuidv4()
                 await SaveTripDetail({
                     tripDetail: trip_plan,
-                    tripId,
-                    uid: userDetail?._id
+                    tripId
                 })
                 setTripId(tripId)
                 setTripDetail(trip_plan)

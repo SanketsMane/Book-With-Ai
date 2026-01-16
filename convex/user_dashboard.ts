@@ -3,33 +3,30 @@ import { query, mutation } from "./_generated/server";
 
 // Fetch all dashboard data for a user
 export const getUserDashboard = query({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
-        const user = await ctx.db.query("UserTable")
-            .filter((q) => q.eq(q.field("email"), args.userId)) // Using email as ID for now based on existing patterns, or lookup by ID if needed. Assuming email/clerk ID mapping.
-            // Actually, let's try to find by some consistent ID. The schema implies userId string is used.
-            // Let's assume we pass the Clerk ID or email. If we can't find by ID directly (if userId is not _id), we use filter.
-            // Best practice: Query by the field you store as userId (e.g. Clerk ID or Email).
-            // Looking at user.ts, we store email. But let's assume the frontend passes the right key. 
-            // In saved_flights.ts query uses userId: v.string().
-            .filter(q => q.eq(q.field("email"), args.userId)) // Fallback to email if that's what we use, or unique field.
-            .first();
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return null;
+        }
+        const userId = identity.email!;
 
-        // If user not found by email, try to search if userId matches token subject (identity).
-        // For simplicity in this demo, we assume userId passed is the unique identifier used across tables.
+        const user = await ctx.db.query("UserTable")
+            .filter((q) => q.eq(q.field("email"), userId))
+            .first();
 
         // Let's fetch preferences
         const preferences = await ctx.db.query("UserPreferences")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .first();
 
         // Let's fetch stats
         const flights = await ctx.db.query("SavedFlights")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .collect();
 
         const itineraries = await ctx.db.query("Itineraries")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .collect();
 
         // Calculate simplified stats
@@ -38,7 +35,7 @@ export const getUserDashboard = query({
             savedFlights: flights.length,
             // Mocking miles calculation for now as we don't store distance yet
             totalMiles: (flights.length * 1250) + (itineraries.length * 3000),
-            countriesVisited: new Set(itineraries.map(i => i.destination.country)).size
+            countriesVisited: new Set(itineraries.map(i => i.destination?.country)).size
         };
 
         // Upcoming Trip (Nearest future date)
@@ -48,7 +45,7 @@ export const getUserDashboard = query({
 
         // Notifications Settings
         const notificationSettings = await ctx.db.query("NotificationPreferences")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .first();
 
         return {
@@ -64,10 +61,6 @@ export const getUserDashboard = query({
 // Update User Profile (Personal Info)
 export const updateProfile = mutation({
     args: {
-        userId: v.string(), // Use the actual DB ID (_id) if upgrading, or the unique key. 
-        // Here we'll expect the frontend to pass the document ID if known, or we query.
-        // Let's accept fields to update.
-        docId: v.id("UserTable"),
         data: v.object({
             name: v.optional(v.string()),
             phone: v.optional(v.string()),
@@ -78,14 +71,24 @@ export const updateProfile = mutation({
         })
     },
     handler: async (ctx, args) => {
-        await ctx.db.patch(args.docId, args.data);
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const user = await ctx.db.query("UserTable")
+            .filter((q) => q.eq(q.field("email"), identity.email!))
+            .unique();
+
+        if (!user) {
+            throw new Error("User profile not found");
+        }
+
+        await ctx.db.patch(user._id, args.data);
     }
 });
 
 // Update Travel Preferences
 export const updatePreferences = mutation({
     args: {
-        userId: v.string(),
         // We will create if not exists
         preferences: v.object({
             preferredDestinations: v.array(v.string()),
@@ -111,8 +114,12 @@ export const updatePreferences = mutation({
         })
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+        const userId = identity.email!;
+
         const existing = await ctx.db.query("UserPreferences")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .first();
 
         if (existing) {
@@ -122,7 +129,7 @@ export const updatePreferences = mutation({
             });
         } else {
             await ctx.db.insert("UserPreferences", {
-                userId: args.userId,
+                userId: userId,
                 ...args.preferences,
                 preferredHotelCategories: [], // Default
                 lastUpdated: new Date().toISOString()
@@ -134,7 +141,6 @@ export const updatePreferences = mutation({
 // Update Notification Preferences
 export const updateNotifications = mutation({
     args: {
-        userId: v.string(),
         settings: v.object({
             emailNotifications: v.boolean(),
             pushNotifications: v.boolean(),
@@ -145,8 +151,12 @@ export const updateNotifications = mutation({
         })
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+        const userId = identity.email!;
+
         const existing = await ctx.db.query("NotificationPreferences")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .first();
 
         const defaults = {
@@ -163,7 +173,7 @@ export const updateNotifications = mutation({
             });
         } else {
             await ctx.db.insert("NotificationPreferences", {
-                userId: args.userId,
+                userId: userId,
                 ...defaults,
                 ...args.settings
             });
@@ -173,16 +183,20 @@ export const updateNotifications = mutation({
 
 // Clear AI Memory (Mock for now, would delete vector embeddings in real app)
 export const clearAiMemory = mutation({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+        const userId = identity.email!;
+
         // Logic to clear history
         const existing = await ctx.db.query("NotificationPreferences")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), userId))
             .first();
 
         if (existing) {
             await ctx.db.patch(existing._id, {
-                aiMemoryStatus: "Cleared"
+                aiMemoryStatus: "Cleared" as any
             });
         }
     }

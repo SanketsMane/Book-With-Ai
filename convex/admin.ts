@@ -5,11 +5,14 @@ import { mutation, query } from "./_generated/server";
 export const upgradeUserToPremium = mutation({
   args: {
     email: v.string(),
-    adminKey: v.string() // Simple security measure
   },
   handler: async (ctx, args) => {
-    // Simple admin verification (replace with proper auth in production)
-    if (args.adminKey !== 'upgrade-sanket-premium-2025') {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    // Secure Admin Check - Allow only specific email
+    const ADMIN_EMAIL = 'contactsanket1@gmail.com';
+    if (identity.email !== ADMIN_EMAIL) {
       throw new Error('Unauthorized admin access');
     }
 
@@ -67,10 +70,14 @@ export const resetUserCredits = mutation({
   args: {
     email: v.string(),
     credits: v.number(),
-    adminKey: v.string()
   },
   handler: async (ctx, args) => {
-    if (args.adminKey !== 'upgrade-sanket-premium-2025') {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    // Secure Admin Check
+    const ADMIN_EMAIL = 'contactsanket1@gmail.com';
+    if (identity.email !== ADMIN_EMAIL) {
       throw new Error('Unauthorized admin access');
     }
 

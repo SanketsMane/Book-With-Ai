@@ -37,7 +37,6 @@ function CreateGroupTripModal({ children }: CreateGroupTripModalProps) {
         setLoading(true);
         try {
             const tripId = await createTrip({
-                creatorId: user.id || "test_user_id",
                 name: formData.name,
                 description: formData.description,
                 destination: {

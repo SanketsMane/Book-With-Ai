@@ -3,12 +3,17 @@ import { mutation, query } from "./_generated/server";
 
 // Get user's group trips
 export const getGroupTrips = query({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return [];
+        }
+
         // Query trips where user is the creator
         const ownedTrips = await ctx.db
             .query("GroupTrips")
-            .withIndex("by_creator", (q) => q.eq("creatorId", args.userId))
+            .withIndex("by_creator", (q) => q.eq("creatorId", identity.email!))
             .collect();
 
         // In a real app, we'd also query trips where user is a member
@@ -29,7 +34,6 @@ export const getGroupTrip = query({
 // Create a new group trip
 export const createGroupTrip = mutation({
     args: {
-        creatorId: v.string(),
         name: v.string(),
         description: v.optional(v.string()),
         destination: v.object({
@@ -50,8 +54,19 @@ export const createGroupTrip = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        // Fetch user details for the member entry
+        const user = await ctx.db
+            .query("UserTable")
+            .filter((q) => q.eq(q.field("email"), identity.email))
+            .first();
+
+        const userName = user?.name || "Organizer";
+
         const tripId = await ctx.db.insert("GroupTrips", {
-            creatorId: args.creatorId,
+            creatorId: identity.email!,
             name: args.name,
             description: args.description,
             destination: args.destination,
@@ -60,9 +75,9 @@ export const createGroupTrip = mutation({
             budget: args.budget,
             status: "planning",
             members: [{
-                userId: args.creatorId,
-                name: "Organizer", // Should be fetched from user profile
-                email: "",
+                userId: identity.email!,
+                name: userName,
+                email: identity.email!,
                 role: "organizer",
                 status: "accepted",
                 joinedAt: new Date().toISOString(),
@@ -89,10 +104,20 @@ export const inviteMember = mutation({
         role: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const trip = await ctx.db.get(args.tripId);
         if (!trip) throw new Error("Trip not found");
 
         const members = trip.members;
+
+        // Check if requester is a member and has invite permission
+        const requester = members.find(m => m.userId === identity.email || m.email === identity.email);
+        if (!requester || !requester.permissions.canInvite) {
+            throw new Error("You don't have permission to invite members");
+        }
+
         // Check if already invited
         if (members.some(m => m.email === args.email)) {
             throw new Error("Already invited");
@@ -120,19 +145,31 @@ export const inviteMember = mutation({
 export const sendMessage = mutation({
     args: {
         tripId: v.id("GroupTrips"),
-        userId: v.string(),
-        userName: v.string(),
+        // userId, userName removed
         content: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const trip = await ctx.db.get(args.tripId);
         if (!trip) throw new Error("Trip not found");
+
+        // Verify membership
+        const isMember = trip.members.some(m => m.email === identity.email);
+        if (!isMember) throw new Error("Not a member of this trip");
+
+        const user = await ctx.db
+            .query("UserTable")
+            .filter((q) => q.eq(q.field("email"), identity.email))
+            .first();
 
         const messages = trip.messages;
         messages.push({
             id: crypto.randomUUID(),
-            userId: args.userId,
-            userName: args.userName,
+            userId: identity.email!,
+            userName: user?.name || identity.name || "User",
+            userAvatar: user?.imageUrl, // Added to schema implicitly via push
             content: args.content,
             type: "text",
             timestamp: new Date().toISOString(),
@@ -178,12 +215,19 @@ export const vote = mutation({
     args: {
         tripId: v.id("GroupTrips"),
         pollId: v.string(),
-        userId: v.string(),
         optionId: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const trip = await ctx.db.get(args.tripId);
         if (!trip) throw new Error("Trip not found");
+
+        // Verify membership
+        if (!trip.members.some(m => m.email === identity.email)) {
+            throw new Error("Not a member");
+        }
 
         const polls = trip.polls;
         const poll = polls.find(p => p.id === args.pollId);
@@ -195,12 +239,12 @@ export const vote = mutation({
         // Remove previous vote if single choice
         if (!poll.allowMultiple) {
             poll.options.forEach(opt => {
-                opt.votes = opt.votes.filter(id => id !== args.userId);
+                opt.votes = opt.votes.filter(id => id !== identity.email);
             });
         }
 
-        if (!option.votes.includes(args.userId)) {
-            option.votes.push(args.userId);
+        if (!option.votes.includes(identity.email!)) {
+            option.votes.push(identity.email!);
         }
 
         await ctx.db.patch(args.tripId, { polls });
@@ -213,12 +257,18 @@ export const addExpense = mutation({
         tripId: v.id("GroupTrips"),
         description: v.string(),
         amount: v.number(),
-        paidBy: v.string(),
         category: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const trip = await ctx.db.get(args.tripId);
         if (!trip) throw new Error("Trip not found");
+
+        if (!trip.members.some(m => m.email === identity.email)) {
+            throw new Error("Not a member");
+        }
 
         const expenses = trip.expenses;
         expenses.push({
@@ -227,10 +277,10 @@ export const addExpense = mutation({
             amount: args.amount,
             currency: "USD",
             category: args.category,
-            paidBy: args.paidBy,
+            paidBy: identity.email!,
             date: new Date().toISOString(),
             splitBetween: trip.members.map(m => ({
-                userId: m.userId,
+                userId: m.userId, // keep using stored userId/email
                 amount: args.amount / trip.members.length,
                 isPaid: false,
             })),

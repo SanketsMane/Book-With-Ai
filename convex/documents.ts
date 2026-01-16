@@ -4,13 +4,15 @@ import { mutation, query } from "./_generated/server";
 // Get user documents
 export const getDocuments = query({
     args: {
-        userId: v.string(),
         folder: v.optional(v.string()),
         documentType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
         let q = ctx.db.query("Documents")
-            .withIndex("by_user", (q) => q.eq("userId", args.userId));
+            .withIndex("by_user", (q) => q.eq("userId", identity.subject));
 
         // Note: For complex filtering in Convex, it's often better to fetch and filter in memory if dataset is small,
         // or use specific composite indexes. Here we filter in memory for simplicity as per MVP plan.
@@ -32,7 +34,6 @@ export const generateUploadUrl = mutation(async (ctx) => {
 // Create document record after file upload
 export const createDocument = mutation({
     args: {
-        userId: v.string(),
         storageId: v.string(),
         fileName: v.string(),
         fileSize: v.number(),
@@ -46,8 +47,11 @@ export const createDocument = mutation({
         expiryDate: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const docId = await ctx.db.insert("Documents", {
-            userId: args.userId,
+            userId: identity.subject,
             storageId: args.storageId,
             fileName: args.fileName,
             fileSize: args.fileSize,
@@ -76,8 +80,14 @@ export const createDocument = mutation({
 export const deleteDocument = mutation({
     args: { id: v.id("Documents") },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const doc = await ctx.db.get(args.id);
         if (!doc) throw new Error("Document not found");
+
+        // Verify ownership
+        if (doc.userId !== identity.subject) throw new Error("Unauthorized");
 
         // Delete file from storage
         await ctx.storage.delete(doc.storageId);
@@ -94,8 +104,14 @@ export const shareDocument = mutation({
         permission: v.string(), // "view" | "download"
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const doc = await ctx.db.get(args.id);
         if (!doc) throw new Error("Document not found");
+
+        // Verify ownership
+        if (doc.userId !== identity.subject) throw new Error("Unauthorized");
 
         const sharedWith = doc.sharedWith || [];
         sharedWith.push({

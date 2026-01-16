@@ -35,7 +35,7 @@ function CreateItineraryModal({ children }: CreateItineraryModalProps) {
         setLoading(true);
         try {
             const itineraryId = await createItinerary({
-                userId: user.id || "test_user_id",
+                tripId: undefined, // Add explicit undefined if optional in schema but good to be explicit
                 title: formData.title,
                 destination: {
                     city: formData.city,

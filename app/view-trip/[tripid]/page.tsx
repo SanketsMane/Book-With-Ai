@@ -29,7 +29,6 @@ function ViewTrip() {
         if (!userDetail) return;
 
         const result = await convex.query(api.tripDetail.GetTripById, {
-            uid: userDetail?._id,
             tripid: tripid + ''
         });
         console.log(result);

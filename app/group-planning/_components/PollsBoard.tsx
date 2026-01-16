@@ -53,10 +53,9 @@ function PollsBoard({ tripId }: PollsBoardProps) {
     const handleVote = async (pollId: string, optionId: string) => {
         if (!user) return;
         await voteOnPoll({
-            tripId,
-            pollId,
-            userId: user.id || "test_user_id",
-            optionId
+            tripId: tripId,
+            pollId: pollId,
+            optionId: optionId,
         });
     }
 

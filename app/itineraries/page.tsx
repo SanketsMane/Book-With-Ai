@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 function Itineraries() {
     const { user, isLoaded } = useUser();
     const itineraries = useQuery(api.itineraries.getItineraries,
-        user ? { userId: user.id || "test_user_id" } : "skip"
+        user ? {} : "skip"
     );
 
     return (

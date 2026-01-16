@@ -26,7 +26,7 @@ export const createNotification = mutation({
       priority: args.priority || "medium",
       category: args.category || "travel",
     });
-    
+
     return notification;
   },
 });
@@ -34,14 +34,19 @@ export const createNotification = mutation({
 // Get user notifications
 export const getUserNotifications = query({
   args: {
-    userId: v.string(),
     limit: v.optional(v.number()),
     unreadOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const userId = identity.email!;
+
     let query = ctx.db
       .query("Notifications")
-      .filter((q) => q.eq(q.field("userId"), args.userId));
+      .filter((q) => q.eq(q.field("userId"), userId));
 
     if (args.unreadOnly) {
       query = query.filter((q) => q.eq(q.field("isRead"), false));
@@ -69,13 +74,15 @@ export const markNotificationRead = mutation({
 
 // Mark all notifications as read
 export const markAllNotificationsRead = mutation({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    const userId = identity.email!;
+
     const notifications = await ctx.db
       .query("Notifications")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .filter((q) => q.eq(q.field("isRead"), false))
       .collect();
 
@@ -151,7 +158,7 @@ export const updatePriceAlert = mutation({
     });
 
     // Check if we should send notification
-    const shouldNotify = alert.targetPrice ? 
+    const shouldNotify = alert.targetPrice ?
       args.newPrice <= alert.targetPrice :
       args.newPrice < alert.lowestPrice;
 
@@ -233,13 +240,15 @@ export const createTripReminder = mutation({
 
 // Get notification preferences
 export const getNotificationPreferences = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null; // or default?
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("NotificationPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     // Return default preferences if none exist
@@ -268,7 +277,6 @@ export const getNotificationPreferences = query({
 // Update notification preferences
 export const updateNotificationPreferences = mutation({
   args: {
-    userId: v.string(),
     preferences: v.object({
       priceAlerts: v.optional(v.boolean()),
       tripReminders: v.optional(v.boolean()),
@@ -286,9 +294,13 @@ export const updateNotificationPreferences = mutation({
     }),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+    const userId = identity.email!;
+
     const existing = await ctx.db
       .query("NotificationPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     if (existing) {
@@ -298,7 +310,7 @@ export const updateNotificationPreferences = mutation({
       });
     } else {
       await ctx.db.insert("NotificationPreferences", {
-        userId: args.userId,
+        userId: userId,
         priceAlerts: true,
         tripReminders: true,
         weatherAlerts: true,

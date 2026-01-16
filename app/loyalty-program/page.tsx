@@ -11,9 +11,7 @@ import { Input } from '@/components/ui/input' // Assuming Input is available
 
 function LoyaltyProgram() {
     const { userDetail } = useUserDetail();
-    const loyaltyPrograms = useQuery(api.loyalty.getLoyaltyPrograms, {
-        userId: userDetail?._id || ''
-    });
+    const loyaltyPrograms = useQuery(api.loyalty.getLoyaltyPrograms);
     const addProgram = useMutation(api.loyalty.addLoyaltyProgram);
     const deleteProgram = useMutation(api.loyalty.deleteLoyaltyProgram);
 
@@ -31,7 +29,6 @@ function LoyaltyProgram() {
     const handleAddProgram = async () => {
         if (!userDetail) return;
         await addProgram({
-            userId: userDetail._id,
             programName: formData.programName,
             airline: formData.airline,
             tier: formData.tier,

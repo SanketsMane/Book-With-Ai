@@ -81,10 +81,10 @@ function Header() {
                         {!user ?
                             <div className='flex gap-3 items-center'>
                                 <Link href='/sign-in'>
-                                    <Button variant='ghost' size="sm" className="font-medium">Sign In</Button>
+                                    <div className="font-medium text-sm px-4 py-2 hover:bg-accent hover:text-accent-foreground rounded-md transition-colors cursor-pointer">Sign In</div>
                                 </Link>
                                 <Link href='/sign-up'>
-                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6">Get Started</Button>
+                                    <div className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-sm font-medium transition-colors cursor-pointer">Get Started</div>
                                 </Link>
                             </div> :
                             <div className='flex items-center gap-3 pl-2'>

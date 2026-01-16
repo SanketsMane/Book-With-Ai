@@ -3,11 +3,15 @@ import { mutation, query } from "./_generated/server";
 
 // Get all saved flights for a specific user
 export const getSavedFlights = query({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return [];
+        }
         return await ctx.db
             .query("SavedFlights")
-            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .withIndex("by_user", (q) => q.eq("userId", identity.email!))
             .order("desc")
             .collect();
     },
@@ -17,10 +21,18 @@ export const getSavedFlights = query({
 export const getSavedFlight = query({
     args: { id: v.id("SavedFlights") },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+
         const flight = await ctx.db.get(args.id);
         if (!flight) {
-            throw new Error("Flight not found");
+            return null; // Don't throw to avoid UI crashes on missing data
         }
+
+        if (flight.userId !== identity.email) {
+            throw new Error("Unauthorized");
+        }
+
         return flight;
     },
 });
@@ -28,7 +40,6 @@ export const getSavedFlight = query({
 // Save a new flight
 export const saveFlight = mutation({
     args: {
-        userId: v.string(),
         searchParams: v.object({
             from: v.string(),
             to: v.string(),
@@ -75,8 +86,11 @@ export const saveFlight = mutation({
         isPriceTracked: v.boolean(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const flightId = await ctx.db.insert("SavedFlights", {
-            userId: args.userId,
+            userId: identity.email!,
             searchParams: args.searchParams,
             flightDetails: args.flightDetails,
             pricing: args.pricing,
@@ -102,6 +116,14 @@ export const updateSavedFlight = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const flight = await ctx.db.get(args.id);
+        if (!flight) throw new Error("Flight not found");
+
+        if (flight.userId !== identity.email) throw new Error("Unauthorized");
+
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -110,6 +132,14 @@ export const updateSavedFlight = mutation({
 export const deleteSavedFlight = mutation({
     args: { id: v.id("SavedFlights") },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const flight = await ctx.db.get(args.id);
+        if (!flight) throw new Error("Flight not found");
+
+        if (flight.userId !== identity.email) throw new Error("Unauthorized");
+
         await ctx.db.delete(args.id);
     },
 });

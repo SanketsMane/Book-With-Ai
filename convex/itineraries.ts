@@ -3,11 +3,15 @@ import { mutation, query } from "./_generated/server";
 
 // Get all itineraries for a user
 export const getItineraries = query({
-    args: { userId: v.string() },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return [];
+        }
         return await ctx.db
             .query("Itineraries")
-            .withIndex("by_user", (q) => q.eq("userId", args.userId))
+            .withIndex("by_user", (q) => q.eq("userId", identity.email!))
             .order("desc")
             .collect();
     },
@@ -24,7 +28,7 @@ export const getItinerary = query({
 // Create new itinerary
 export const createItinerary = mutation({
     args: {
-        userId: v.string(),
+        // userId removed
         tripId: v.optional(v.id("TripDetailTable")),
         title: v.string(),
         description: v.optional(v.string()),
@@ -41,6 +45,9 @@ export const createItinerary = mutation({
         timezone: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const days = [];
         const start = new Date(args.startDate);
         const end = new Date(args.endDate);
@@ -58,7 +65,7 @@ export const createItinerary = mutation({
         }
 
         const itineraryId = await ctx.db.insert("Itineraries", {
-            userId: args.userId,
+            userId: identity.email!,
             tripId: args.tripId,
             title: args.title,
             description: args.description,
@@ -127,8 +134,14 @@ export const addActivity = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const itinerary = await ctx.db.get(args.itineraryId);
         if (!itinerary) throw new Error("Itinerary not found");
+
+        // Simple ownership check - can be expanded to collaborators
+        if (itinerary.userId !== identity.email) throw new Error("Unauthorized");
 
         const days = itinerary.days;
         if (args.dayIndex < 0 || args.dayIndex >= days.length) {
@@ -165,8 +178,13 @@ export const deleteActivity = mutation({
         activityId: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const itinerary = await ctx.db.get(args.itineraryId);
         if (!itinerary) throw new Error("Itinerary not found");
+
+        if (itinerary.userId !== identity.email) throw new Error("Unauthorized");
 
         const days = itinerary.days;
         const day = days[args.dayIndex];
@@ -196,6 +214,16 @@ export const deleteActivity = mutation({
 export const deleteItinerary = mutation({
     args: { id: v.id("Itineraries") },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const itinerary = await ctx.db.get(args.id);
+        if (!itinerary) throw new Error("Itinerary not found");
+
+        if (itinerary.userId !== identity.email) {
+            throw new Error("Unauthorized to delete this itinerary");
+        }
+
         await ctx.db.delete(args.id);
     },
 });

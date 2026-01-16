@@ -11,9 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 function PriceAlerts() {
     const { userDetail } = useUserDetail();
-    const alerts = useQuery(api.price_alerts.getAlerts, {
-        userId: userDetail?._id || ''
-    });
+    const alerts = useQuery(api.price_alerts.getAlerts);
     const addAlert = useMutation(api.price_alerts.addAlert);
     const deleteAlert = useMutation(api.price_alerts.deleteAlert);
     const toggleAlert = useMutation(api.price_alerts.toggleAlertStatus);
@@ -38,7 +36,6 @@ function PriceAlerts() {
         }));
 
         await addAlert({
-            userId: userDetail._id,
             alertType: 'flight',
             searchParams: {
                 from: formData.from,

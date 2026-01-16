@@ -2,19 +2,20 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 export const getLoyaltyPrograms = query({
-    args: {
-        userId: v.string()
-    },
-    handler: async (ctx, args) => {
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) {
+            return [];
+        }
         return await ctx.db.query("LoyaltyPrograms")
-            .filter(q => q.eq(q.field("userId"), args.userId))
+            .filter(q => q.eq(q.field("userId"), identity.email!))
             .collect();
     }
 });
 
 export const addLoyaltyProgram = mutation({
     args: {
-        userId: v.string(),
         programName: v.string(),
         airline: v.string(),
         tier: v.string(),
@@ -25,8 +26,11 @@ export const addLoyaltyProgram = mutation({
         nextTier: v.string(),
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
         const newProgramId = await ctx.db.insert("LoyaltyPrograms", {
-            userId: args.userId,
+            userId: identity.email!,
             programName: args.programName,
             airline: args.airline,
             tier: args.tier,
@@ -45,6 +49,14 @@ export const deleteLoyaltyProgram = mutation({
         id: v.id("LoyaltyPrograms")
     },
     handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) throw new Error("Unauthorized");
+
+        const program = await ctx.db.get(args.id);
+        if (!program) throw new Error("Program not found");
+
+        if (program.userId !== identity.email) throw new Error("Unauthorized");
+
         await ctx.db.delete(args.id);
     }
 });

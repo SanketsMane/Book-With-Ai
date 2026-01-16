@@ -4,7 +4,6 @@ import { v } from "convex/values";
 // Create or update user preferences
 export const updateUserPreferences = mutation({
   args: {
-    userId: v.string(),
     preferredBudget: v.optional(v.object({
       flight: v.optional(v.number()),
       hotel: v.optional(v.number()),
@@ -16,13 +15,18 @@ export const updateUserPreferences = mutation({
     travelStyle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     const existing = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     const updateData = {
-      userId: args.userId,
+      userId: userId,
       preferredBudget: args.preferredBudget || { flight: 0, hotel: 0, total: 0 },
       preferredDestinations: args.preferredDestinations || [],
       preferredAirlines: args.preferredAirlines || [],
@@ -43,19 +47,24 @@ export const updateUserPreferences = mutation({
 
 // Get user preferences
 export const getUserPreferences = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null; // Or return default structure if preferred
+    }
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     if (!preferences) {
       // Return default preferences
       return {
-        userId: args.userId,
+        userId: userId,
         preferredBudget: { flight: 0, hotel: 0, total: 0 },
         preferredDestinations: [],
         preferredAirlines: [],
@@ -73,19 +82,23 @@ export const getUserPreferences = query({
 // Learn from user trip data
 export const learnFromTrip = mutation({
   args: {
-    userId: v.string(),
     tripData: v.any(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     if (!preferences) {
       // Create initial preferences from trip data
       const newPreferences = {
-        userId: args.userId,
+        userId: userId,
         preferredBudget: {
           flight: 0,
           hotel: 0,
@@ -129,7 +142,7 @@ export const learnFromTrip = mutation({
 
     // Record search history
     await ctx.db.insert("SearchHistory", {
-      userId: args.userId,
+      userId: userId,
       searchType: "trip",
       searchData: args.tripData,
       searchDate: new Date().toISOString(),
@@ -141,26 +154,37 @@ export const learnFromTrip = mutation({
 // Get personalized recommendations
 export const getPersonalizedRecommendations = query({
   args: {
-    userId: v.string(),
     type: v.string(), // "destinations", "hotels", "budget"
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const userId = identity.email!;
+
     const preferences = await ctx.db
       .query("UserPreferences")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
 
     const searchHistory = await ctx.db
       .query("SearchHistory")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .take(10);
 
-    const trips = await ctx.db
+    const user = await ctx.db
+      .query("UserTable")
+      .filter((q) => q.eq(q.field("email"), userId))
+      .first();
+
+    const trips = user ? await ctx.db
       .query("TripDetailTable")
-      .filter((q) => q.eq(q.field("uid"), args.userId as any))
+      .filter((q) => q.eq(q.field("uid"), user._id))
       .order("desc")
-      .take(5);
+      .take(5) : [];
 
     // Generate recommendations based on type
     switch (args.type) {
@@ -180,19 +204,28 @@ export const getPersonalizedRecommendations = query({
 
 // Get user travel patterns
 export const getUserTravelPatterns = query({
-  args: {
-    userId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const trips = await ctx.db
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    const userId = identity.email!;
+
+    const user = await ctx.db
+      .query("UserTable")
+      .filter((q) => q.eq(q.field("email"), userId))
+      .first();
+
+    const trips = user ? await ctx.db
       .query("TripDetailTable")
-      .filter((q) => q.eq(q.field("uid"), args.userId as any))
+      .filter((q) => q.eq(q.field("uid"), user._id))
       .order("desc")
-      .collect();
+      .collect() : [];
 
     const searchHistory = await ctx.db
       .query("SearchHistory")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .take(50);
 
@@ -213,13 +246,17 @@ export const getUserTravelPatterns = query({
 // Record user interaction for learning
 export const recordUserInteraction = mutation({
   args: {
-    userId: v.string(),
     interactionType: v.string(), // "search", "view", "book", "favorite"
     data: v.any(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const userId = identity.email!;
+
     await ctx.db.insert("SearchHistory", {
-      userId: args.userId,
+      userId: userId,
       searchType: args.interactionType,
       searchData: args.data,
       searchDate: new Date().toISOString(),
@@ -230,7 +267,7 @@ export const recordUserInteraction = mutation({
     if (args.interactionType === "favorite_destination") {
       const preferences = await ctx.db
         .query("UserPreferences")
-        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .filter((q) => q.eq(q.field("userId"), userId))
         .first();
 
       if (preferences) {

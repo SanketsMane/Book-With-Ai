@@ -53,7 +53,6 @@ function UploadDocumentModal({ children }: UploadDocumentModalProps) {
 
             // Step 3: Save the newly allocated storageId to the database
             await createDocument({
-                userId: user.id || "test_user_id",
                 storageId,
                 fileName: file.name,
                 fileSize: file.size,

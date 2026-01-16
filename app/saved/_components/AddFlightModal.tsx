@@ -36,7 +36,6 @@ function AddFlightModal({ children }: AddFlightModalProps) {
         setLoading(true);
         try {
             await saveFlight({
-                userId: user.id || "test_user_id", // Fallback for dev
                 searchParams: {
                     from: formData.from,
                     to: formData.to,
