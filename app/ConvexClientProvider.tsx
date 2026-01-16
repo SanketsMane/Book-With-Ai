@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import React, { ReactNode } from 'react'
 import Provider from './provider';
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL || "https://joyous-chipmunk-69.convex.cloud");
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
     return (
