@@ -64,7 +64,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
     const now = new Date()
     const date = new Date(dateString)
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-    
+
     if (diffInMinutes < 1) return 'Just now'
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
@@ -82,7 +82,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
           <div className="flex-shrink-0 mt-1">
             {getIcon()}
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h4 className={cn(
@@ -98,11 +98,11 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
                 {notification.priority}
               </Badge>
             </div>
-            
+
             <p className="text-sm text-muted-foreground mb-2 break-words">
               {notification.message}
             </p>
-            
+
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{formatTimeAgo(notification.createdAt)}</span>
               <span>•</span>
@@ -110,7 +110,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-1 flex-shrink-0">
           {!notification.isRead && (
             <Button
@@ -123,7 +123,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
               <Check className="h-3 w-3" />
             </Button>
           )}
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -135,7 +135,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
           </Button>
         </div>
       </div>
-      
+
       {/* Additional action buttons for specific notification types */}
       {notification.type === 'price_alert' && notification.data && (
         <div className="mt-3 pt-3 border-t border-border">
@@ -153,7 +153,7 @@ function NotificationItem({ notification, onMarkRead, onDismiss }: NotificationI
               </>
             )}
           </div>
-          
+
           <Button size="sm" className="mt-2" variant="outline">
             View Details
           </Button>
@@ -186,7 +186,7 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
       <div className="flex items-center justify-between">
         <h3 className="font-medium">Notification Types</h3>
       </div>
-      
+
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -195,12 +195,12 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
           </div>
           <Switch
             checked={localPrefs.priceAlerts}
-            onCheckedChange={(checked) => 
+            onCheckedChange={(checked) =>
               setLocalPrefs((prev: typeof localPrefs) => ({ ...prev, priceAlerts: checked }))
             }
           />
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <div className="font-medium text-sm">Trip Reminders</div>
@@ -208,12 +208,12 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
           </div>
           <Switch
             checked={localPrefs.tripReminders}
-            onCheckedChange={(checked) => 
+            onCheckedChange={(checked) =>
               setLocalPrefs((prev: typeof localPrefs) => ({ ...prev, tripReminders: checked }))
             }
           />
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <div className="font-medium text-sm">Weather Alerts</div>
@@ -221,12 +221,12 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
           </div>
           <Switch
             checked={localPrefs.weatherAlerts}
-            onCheckedChange={(checked) => 
+            onCheckedChange={(checked) =>
               setLocalPrefs((prev: typeof localPrefs) => ({ ...prev, weatherAlerts: checked }))
             }
           />
         </div>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <div className="font-medium text-sm">Deal Alerts</div>
@@ -234,21 +234,21 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
           </div>
           <Switch
             checked={localPrefs.dealAlerts}
-            onCheckedChange={(checked) => 
+            onCheckedChange={(checked) =>
               setLocalPrefs((prev: typeof localPrefs) => ({ ...prev, dealAlerts: checked }))
             }
           />
         </div>
       </div>
-      
+
       <Separator />
-      
+
       <div className="space-y-3">
         <h4 className="font-medium text-sm">Alert Frequency</h4>
-        
+
         <Select
           value={localPrefs.alertFrequency}
-          onValueChange={(value) => 
+          onValueChange={(value) =>
             setLocalPrefs((prev: typeof localPrefs) => ({ ...prev, alertFrequency: value }))
           }
         >
@@ -262,7 +262,7 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
           </SelectContent>
         </Select>
       </div>
-      
+
       <Button onClick={handleSave} className="w-full" size="sm">
         Save Preferences
       </Button>
@@ -273,45 +273,44 @@ function NotificationPreferences({ preferences, onUpdatePreferences }: Notificat
 export function NotificationCenter() {
   const { userDetail } = useUserDetail()
   const [isOpen, setIsOpen] = useState(false)
-  
+
   // Queries
-  const notifications = useQuery(api.notifications.getUserNotifications, 
-    userDetail ? { userId: userDetail._id } : "skip"
+  const notifications = useQuery(api.notifications.getUserNotifications,
+    userDetail ? {} : "skip"
   )
-  
-  const unreadNotifications = useQuery(api.notifications.getUserNotifications, 
-    userDetail ? { userId: userDetail._id, unreadOnly: true } : "skip"
+
+  const unreadNotifications = useQuery(api.notifications.getUserNotifications,
+    userDetail ? { unreadOnly: true } : "skip"
   )
-  
+
   const preferences = useQuery(api.notifications.getNotificationPreferences,
-    userDetail ? { userId: userDetail._id } : "skip"
+    userDetail ? {} : "skip"
   )
-  
+
   // Mutations
   const markAsRead = useMutation(api.notifications.markNotificationRead)
   const markAllAsRead = useMutation(api.notifications.markAllNotificationsRead)
   const updatePreferences = useMutation(api.notifications.updateNotificationPreferences)
-  
+
   const unreadCount = unreadNotifications?.length || 0
-  
+
   const handleMarkRead = async (notificationId: string) => {
     await markAsRead({ notificationId: notificationId as any })
   }
-  
+
   const handleDismiss = async (notificationId: string) => {
     await markAsRead({ notificationId: notificationId as any })
   }
-  
+
   const handleMarkAllRead = async () => {
     if (userDetail) {
-      await markAllAsRead({ userId: userDetail._id })
+      await markAllAsRead({})
     }
   }
-  
+
   const handleUpdatePreferences = async (newPreferences: any) => {
     if (userDetail) {
       await updatePreferences({
-        userId: userDetail._id,
         preferences: newPreferences
       })
     }
@@ -330,10 +329,10 @@ export function NotificationCenter() {
           ) : (
             <Bell className="h-4 w-4" />
           )}
-          
+
           {unreadCount > 0 && (
-            <Badge 
-              variant="destructive" 
+            <Badge
+              variant="destructive"
               className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -341,11 +340,11 @@ export function NotificationCenter() {
           )}
         </Button>
       </PopoverTrigger>
-      
+
       <PopoverContent className="w-96 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="font-semibold">Notifications</h2>
-          
+
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
               <Button
@@ -357,7 +356,7 @@ export function NotificationCenter() {
                 Mark all read
               </Button>
             )}
-            
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -375,7 +374,7 @@ export function NotificationCenter() {
             </Popover>
           </div>
         </div>
-        
+
         <div className="max-h-96 overflow-y-auto">
           {!notifications || notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
