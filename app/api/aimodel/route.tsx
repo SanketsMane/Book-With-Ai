@@ -168,6 +168,15 @@ export async function POST(req: NextRequest) {
     } catch (geminiError) {
       console.error('❌ Gemini API failed:', geminiError);
 
+      // FIX: If this was a final generation request, DO NOT fall back to state machine.
+      // This prevents the "Perfect!..." loop.
+      if (isFinal) {
+        return NextResponse.json({
+          resp: "I'm sorry, I needed a bit more time to think and timed out. Please try generating the trip again.",
+          ui: null
+        });
+      }
+
       // CLEAN CONVERSATION FLOW - Simple state machine
       const userQuery = messages[messages.length - 1]?.content?.toLowerCase() || '';
       const conversationHistory = messages.map((m: any) => m.content?.toLowerCase() || '').join(' ');
