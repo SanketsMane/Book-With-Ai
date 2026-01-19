@@ -495,9 +495,11 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
     }
 
     // Detect final step and trigger response once
+    const hasTriggeredFinal = useRef(false)
     useEffect(() => {
         const lastMsg = messages[messages.length - 1]
-        if (lastMsg?.ui === 'final' && !isFinal) {
+        if (lastMsg?.ui === 'final' && !isFinal && !hasTriggeredFinal.current) {
+            hasTriggeredFinal.current = true
             setIsFinal(true)
             triggerSend('Ok, Great!', true)
         }

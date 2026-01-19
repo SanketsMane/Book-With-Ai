@@ -40,8 +40,9 @@ function GroupSizeUi({ onSelectedOption }: any) {
                  bg-white hover:border-primary cursor-pointer'
                     onClick={() => onSelectedOption(item.title + ":" + item.people)}
                 >
-                    <h2>{item.icon}</h2>
-                    <h2>{item.title}</h2>
+                    <h2 className='text-2xl'>{item.icon}</h2>
+                    <h2 className='font-bold text-lg text-gray-900'>{item.title}</h2>
+                    <p className='text-sm text-gray-500'>{item.desc}</p>
                 </div>
             ))}
         </div>

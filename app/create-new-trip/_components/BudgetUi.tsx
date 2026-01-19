@@ -36,7 +36,7 @@ function BudgetUi({ onSelectedOption }: any) {
                         onClick={() => onSelectedOption(item.title + ":" + item.desc)}
                     >
                         <div className={`text-3xl p-3 rounded-full ${item.color}`}>{item.icon}</div>
-                        <h2 className='text-lg font-semibold mt-2'>{item.title}</h2>
+                        <h2 className='text-lg font-bold mt-2 text-gray-900'>{item.title}</h2>
                         <p className='text-sm text-gray-500'>{item.desc}</p>
                     </div>
                 ))}
