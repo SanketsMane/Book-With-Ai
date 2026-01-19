@@ -2,10 +2,6 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  env: {
-    CLERK_SECRET_KEY: 'sk_test_azIl6yHG8Bs0MdA0f6qKUYhcIkEcbD6Ce12Co6l7oK',
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_ZGFyaW5nLXJvb3N0ZXItNDYuY2xlcmsuYWNjb3VudHMuZGV2JA',
-  },
   reactStrictMode: false,
 
   // Optimize production builds
