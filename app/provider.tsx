@@ -48,9 +48,11 @@ function Provider({
         <TooltipProvider>
             <UserDetailContext.Provider value={{ userDetail, setUserDetail }}>
                 <TripDetailContext.Provider value={{ tripDetailInfo, setTripDetailInfo }}>
-                    <div className="min-h-screen bg-background text-foreground">
+                    <div className="h-screen flex flex-col overflow-hidden bg-background text-foreground">
                         <Header />
-                        {children}
+                        <main className="flex-1 overflow-y-auto relative w-full header-aware-scroll">
+                            {children}
+                        </main>
                     </div>
                 </TripDetailContext.Provider>
             </UserDetailContext.Provider>

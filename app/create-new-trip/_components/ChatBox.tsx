@@ -2,7 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import axios from 'axios'
-import { Loader, Send, Volume2, Bot, FileText } from 'lucide-react'
+import { Loader, Send, Volume2, Bot, FileText, Sparkles, Paperclip, Mic, ArrowRight } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useVoiceConversation } from '@/hooks/use-voice-conversation'
 import { VoiceMicButton, VoiceStatus } from '@/components/ui/voice-components'
@@ -83,6 +83,7 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
     const [messages, setMessages] = useState<Message[]>([])
     const [userInput, setUserInput] = useState<string>('')
     const [loading, setLoading] = useState(false)
+    const [loadingText, setLoadingText] = useState('Thinking...') // New state for optimistic loading text
     const [isFinal, setIsFinal] = useState(false)
     const [tripDetail, setTripDetail] = useState<TripInfo>()
     const [hotelSearchData, setHotelSearchData] = useState<{ location: string; budget: string } | null>(null)
@@ -179,15 +180,26 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
         }
 
         setMessages((prev) => [...prev, newMsg])
+
+        // Calculate optimistic loading text BEFORE clearing input
+        const lowerText = text.toLowerCase();
+        if (lowerText.includes('hotel')) setLoadingText('Searching best hotels...');
+        else if (lowerText.includes('flight') || lowerText.includes('fly')) setLoadingText('Finding live flights...');
+        else if (isFinalOverride || isFinal) setLoadingText('Generating your itinerary...');
+        else if (lowerText.includes('plan') || lowerText.includes('trip')) setLoadingText('Planning your trip...');
+        else setLoadingText('Thinking...');
+
         setUserInput('')
         setLoading(true)
 
         try {
+            console.log('🚀 Sending request to /api/aimodel with message:', text);
             const result = await axios.post('/api/aimodel', {
                 messages: [...messages, newMsg],
                 isFinal: isFinalOverride ?? isFinal
             })
 
+            console.log('✅ Received response:', result.data);
             const { resp, ui, trip_plan, intent, location } = result.data || {}
 
             // Handle flight search flow
@@ -505,221 +517,212 @@ const ChatBox = React.forwardRef((props: { hideInput?: boolean }, ref) => {
         }
     }, [messages, isFinal])
 
+
+
     return (
-        <div className='h-full flex flex-col bg-white dark:bg-gray-800'>
+        <div className='h-full flex flex-col bg-white dark:bg-gray-900 relative'>
             {messages.length === 0 && (
                 <div className='flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in duration-500'>
-                    <div className="max-w-2xl w-full text-center space-y-8">
-                        <div className="flex items-center justify-center gap-3 mb-2">
-                            <div className="bg-blue-600 rounded-2xl p-3 shadow-lg shadow-blue-600/20">
-                                <FileText className="w-8 h-8 text-white" />
-                            </div>
-                            <div className="text-left">
-                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Itinerary Generator</h1>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Let AI create personalized day-by-day travel plans</p>
+                    <div className="max-w-3xl w-full text-center space-y-8">
+
+                        {/* Main Icon */}
+                        <div className="flex justify-center mb-6">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-600/20 rotate-3 transition-transform hover:rotate-0">
+                                <Sparkles className="w-10 h-10 text-white" />
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-[32px] p-10 shadow-xl shadow-blue-900/5">
-                            <div className="flex flex-col items-center gap-6">
-                                <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-3xl flex items-center justify-center mb-2">
-                                    <FileText className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <div className="space-y-3 max-w-lg">
-                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Create Your Perfect Itinerary</h2>
-                                    <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
-                                        Tell us about your trip and we'll generate a detailed day-by-day itinerary with activities, dining, and budget planning
-                                    </p>
-                                </div>
-                                <Button
-                                    className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg hover:translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 mt-2"
-                                    onClick={() => setUserInput("Help me plan a trip")}
-                                >
-                                    Start Planning with AI
-                                </Button>
-                            </div>
+                        {/* Headings */}
+                        <div className="space-y-4">
+                            <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                Your AI Travel Assistant
+                            </h1>
+                            <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">
+                                Ask anything to find flights, plan trips, or track prices.
+                            </p>
                         </div>
+
+                        {/* Travel Tip */}
+                        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 py-3 px-6 rounded-full inline-flex items-center gap-3 mx-auto mt-8">
+                            <Sparkles className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Travel Tip</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400 border-l border-blue-200 dark:border-blue-700 pl-3">
+                                Pro tip: Tuesday and Wednesday are typically the cheapest days to fly.
+                            </span>
+                        </div>
+
+                        <p className="text-sm text-gray-400 mt-8">
+                            Ask me anything to get help with your travel-related query.
+                        </p>
+
+                        {/* Suggestion Chips */}
+                        <div className="flex flex-wrap justify-center gap-3 mt-12">
+                            {[
+                                { label: "Find Flights", icon: "✈️" },
+                                { label: "Plan Trip", icon: "📅" },
+                                { label: "Track Prices", icon: "📈" },
+                                { label: "Explore Destinations", icon: "🗺️" }
+                            ].map((chip) => (
+                                <button
+                                    key={chip.label}
+                                    onClick={() => { setUserInput(chip.label); triggerSend(chip.label); }}
+                                    className="px-6 py-3 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 transition-all flex items-center gap-2"
+                                >
+                                    <span>{chip.icon}</span>
+                                    {chip.label}
+                                </button>
+                            ))}
+                        </div>
+
                     </div>
                 </div>
             )}
 
-            {/* Messages */}
-            <section className='flex-1 overflow-y-auto px-4 py-6 space-y-6'>
-                {messages.map((msg, index) => (
-                    <React.Fragment key={index}>
-                        {/* Regular Message */}
-                        {msg.ui !== 'hotelResults' && msg.ui !== 'flightResults' && (
-                            <div className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                {/* Avatar for AI */}
-                                {msg.role === 'assistant' && (
-                                    <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
-                                        <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
-                                    </div>
-                                )}
+            {/* Messages Area - Only show if there are messages */}
+            {messages.length > 0 && (
+                <section className='flex-1 overflow-y-auto px-4 py-6 space-y-6 pb-40'> {/* Added padding bottom for fixed input */}
+                    {messages.map((msg, index) => (
+                        <React.Fragment key={index}>
+                            {/* Regular Message */}
+                            {msg.ui !== 'hotelResults' && msg.ui !== 'flightResults' && (
+                                <div className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start max-w-4xl mx-auto w-full'}`}>
+                                    {/* Avatar for AI */}
+                                    {msg.role === 'assistant' && (
+                                        <div className='w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800'>
+                                            <Sparkles className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                                        </div>
+                                    )}
 
-                                <div className={`max-w-xs lg:max-w-md px-5 py-3.5 shadow-sm ${msg.role === 'user'
-                                    ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm'
-                                    : 'bg-white dark:bg-card border border-border/50 text-foreground rounded-2xl rounded-tl-sm'
-                                    }`}>
-                                    <div className="text-[15px] leading-relaxed">{msg.content}</div>
-                                    {RenderGenerativeUi(msg.ui)}
+                                    <div className={`max-w-[80%] px-6 py-4 shadow-sm text-base leading-relaxed ${msg.role === 'user'
+                                        ? 'bg-blue-600 text-white rounded-[24px] rounded-tr-sm'
+                                        : 'bg-white dark:bg-card border border-border/50 text-foreground rounded-[24px] rounded-tl-sm'
+                                        }`}>
+                                        <div>{msg.content}</div>
+                                        {RenderGenerativeUi(msg.ui)}
+                                    </div>
                                 </div>
+                            )}
 
-                                {/* Avatar for User */}
-                                {msg.role === 'user' && (
-                                    <div className='w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 mt-1 border border-border'>
-                                        <span className='text-xs font-bold text-gray-600 dark:text-gray-300'>YOU</span>
+                            {/* Full Width Results */}
+                            {msg.ui === 'hotelResults' && msg.hotels && msg.location && (
+                                <div className='w-full max-w-5xl mx-auto'>
+                                    <div className='flex gap-4 mb-6'>
+                                        <div className='w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800'>
+                                            <Sparkles className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                                        </div>
+                                        <div className='bg-white dark:bg-card px-6 py-4 rounded-[24px] rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                            <div className="text-base leading-relaxed">{msg.content}</div>
+                                        </div>
                                     </div>
-                                )}
+                                    <HotelBookingUI hotels={msg.hotels} location={msg.location} />
+                                </div>
+                            )}
+                            {/* ... Flight Results Logic (Existing) ... */}
+                            {msg.ui === 'flightResults' && msg.flights && (
+                                <div className='w-full max-w-5xl mx-auto'>
+                                    <div className='flex gap-4 mb-6'>
+                                        <div className='w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800'>
+                                            <Sparkles className='h-5 w-5 text-blue-600 dark:text-blue-400' />
+                                        </div>
+                                        <div className='bg-white dark:bg-card px-6 py-4 rounded-[24px] rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
+                                            <div className="text-base leading-relaxed">{msg.content}</div>
+                                        </div>
+                                    </div>
+                                    <div className='w-full'>
+                                        {/* @ts-ignore */}
+                                        <FlightBookingUI flights={msg.flights} route={msg.route || { from: '', to: '' }} budget={msg.budget} />
+                                    </div>
+                                </div>
+                            )}
+
+                        </React.Fragment>
+                    ))}
+
+                    {loading && (
+                        <div className='flex gap-4 justify-start max-w-4xl mx-auto w-full'>
+                            <div className='w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-blue-800'>
+                                <Sparkles className='h-5 w-5 text-blue-600 dark:text-blue-400' />
                             </div>
-                        )}
-
-                        {/* Hotel Results Display - Full Width */}
-                        {msg.ui === 'hotelResults' && msg.hotels && msg.location && (
-                            <div className='w-full pl-12 pr-4'>
-                                <div className='mb-4 max-w-lg'>
-                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
-                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
-                                    </div>
-                                </div>
-                                <HotelBookingUI hotels={msg.hotels} location={msg.location} />
+                            <div className='bg-white dark:bg-card text-foreground px-6 py-4 rounded-[24px] rounded-tl-sm border border-border/50 flex items-center gap-3 shadow-sm'>
+                                <Loader className='animate-spin h-4 w-4 text-blue-600' />
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    {loadingText}
+                                </span>
                             </div>
-                        )}
-
-                        {/* Flight Results Display - Full Width */}
-                        {msg.ui === 'flightResults' && msg.flights && (
-                            <div className='w-full pl-12 pr-4'>
-                                <div className='mb-4 max-w-lg'>
-                                    <div className='bg-white dark:bg-card px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 shadow-sm text-foreground'>
-                                        <div className="text-[15px] leading-relaxed">{msg.content}</div>
-                                    </div>
-                                </div>
-                                <div className='w-full'>
-                                    {/* @ts-ignore */}
-                                    <FlightBookingUI flights={msg.flights} route={msg.route || { from: '', to: '' }} budget={msg.budget} />
-                                </div>
-                            </div>
-                        )}
-                    </React.Fragment>
-                ))}
-
-                {loading && (
-                    <div className='flex gap-4 justify-start'>
-                        <div className='w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 mt-1 border border-blue-200 dark:border-blue-800'>
-                            <Bot className='h-5 w-5 text-blue-600 dark:text-blue-400' />
                         </div>
-                        <div className='bg-white dark:bg-card text-foreground px-5 py-3.5 rounded-2xl rounded-tl-sm border border-border/50 flex items-center gap-3 shadow-sm'>
-                            <Loader className='animate-spin h-4 w-4 text-blue-600' />
-                            <span className="text-sm font-medium text-muted-foreground">
-                                {userInput.toLowerCase().includes('hotel') ? 'Searching best hotels...' :
-                                    userInput.toLowerCase().includes('flight') ? 'Finding live flights...' :
-                                        isFinal ? 'Generating your itinerary...' : 'Thinking...'}
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div ref={messagesEndRef} />
-            </section>
-
-            {/* Voice Status */}
-            {(voiceState.isListening || voiceState.transcript || voiceState.error) && (
-                <VoiceStatus
-                    isListening={voiceState.isListening}
-                    isProcessing={voiceState.isProcessing}
-                    transcript={voiceState.transcript}
-                    confidence={voiceState.confidence}
-                    error={voiceState.error}
-                    className="px-4"
-                />
+                    )}
+                    <div ref={messagesEndRef} />
+                </section>
             )}
 
-            {/* Input - Conditionally Rendered */}
+
+            {/* Floating Input Area */}
             {!props.hideInput && (
-                <section className='p-4 pb-6 bg-transparent'>
-                    <div className='relative bg-white dark:bg-card rounded-2xl shadow-lg border border-border/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30'>
-                        {/* Voice Response Toggle & Stop Button */}
-                        {voiceState.isSupported && (
-                            <div className="absolute -top-10 right-0 flex items-center justify-end gap-2 mb-2 text-xs text-muted-foreground">
-                                <div className="flex items-center gap-2 bg-white/80 dark:bg-card/80 backdrop-blur p-1 rounded-full border border-border/50 shadow-sm">
-                                    <button
-                                        onClick={voiceControls.toggleVoice}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${voiceState.voiceEnabled
-                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                <div className="absolute bottom-6 left-0 right-0 px-4 md:px-0">
+                    <div className="max-w-3xl mx-auto">
+                        <div className="relative group">
+                            <div className={`absolute -inset-1 rounded-[32px] bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-md`} />
+
+                            <div className="relative bg-white dark:bg-card rounded-[32px] shadow-2xl shadow-blue-900/5 border border-gray-200 dark:border-gray-800 flex items-end p-2 transition-all ring-1 ring-black/5">
+                                {/* Paperclip */}
+                                <button className="p-3 text-gray-400 hover:text-blue-600 transition-colors rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                                    <Paperclip className="w-5 h-5" />
+                                </button>
+
+                                <Textarea
+                                    placeholder={
+                                        voiceState.isListening
+                                            ? '🎤 Listening... (Speak now)'
+                                            : 'Message Book With AI...'
+                                    }
+                                    className='flex-1 min-h-[50px] max-h-32 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-base text-foreground placeholder:text-muted-foreground py-3.5 px-2'
+                                    onChange={(e) => setUserInput(e.target.value)}
+                                    value={userInput}
+                                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
+                                    disabled={voiceState.isListening || voiceState.isSpeaking}
+                                />
+
+                                <div className="flex items-center gap-1 p-1">
+                                    <VoiceMicButton
+                                        isListening={voiceState.isListening}
+                                        isProcessing={voiceState.isProcessing}
+                                        isSupported={voiceState.isSupported}
+                                        error={voiceState.error}
+                                        onClick={voiceControls.toggleListening}
+                                        className=""
+                                        size="sm"
+                                        variant="ghost"
+                                    />
+
+                                    <Button
+                                        size='icon'
+                                        className={`h-10 w-10 rounded-full transition-all duration-200 ${!userInput.trim()
+                                            ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800'
+                                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20'
                                             }`}
-                                        title={voiceState.voiceEnabled ? 'AI voice replies enabled' : 'Click to enable AI voice replies'}
+                                        onClick={onSend}
+                                        disabled={loading || voiceState.isListening || voiceState.isSpeaking || (!userInput.trim() && !loading)}
                                     >
-                                        <Volume2 className="h-3.5 w-3.5" />
-                                        <span className="font-medium text-[11px]">
-                                            {voiceState.voiceEnabled ? 'Voice ON' : 'Voice OFF'}
-                                        </span>
-                                    </button>
-                                    {voiceState.isSpeaking && (
-                                        <span className="flex items-center gap-1.5 px-2 text-green-600 dark:text-green-400 font-medium text-[11px]">
-                                            <div className="h-1.5 w-1.5 bg-green-500 rounded-full animate-pulse" />
-                                            Speaking...
-                                        </span>
-                                    )}
+                                        {loading ? <Loader className='h-4 w-4 animate-spin' /> : <ArrowRight className='h-5 w-5' />}
+                                    </Button>
                                 </div>
-
-                                {/* Stop Speaking Button */}
-                                {voiceState.isSpeaking && (
-                                    <button
-                                        onClick={voiceControls.stopSpeaking}
-                                        className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card border border-red-200 text-red-600 hover:bg-red-50 shadow-sm transition-colors"
-                                        title="Stop AI from speaking"
-                                    >
-                                        <div className="h-2.5 w-2.5 bg-red-500 rounded-[1px]" />
-                                    </button>
-                                )}
                             </div>
-                        )}
+                        </div>
 
-                        <Textarea
-                            placeholder={
-                                voiceState.isListening
-                                    ? '🎤 Listening... (Speak now)'
-                                    : voiceState.voiceEnabled
-                                        ? 'Type or say your plan...'
-                                        : 'Ask me anything about your trip...'
-                            }
-                            className='w-full min-h-[60px] h-16 max-h-40 bg-transparent border-none focus-visible:ring-0 shadow-none resize-none text-base text-foreground placeholder:text-muted-foreground/50 py-4 pl-4 pr-24 rounded-2xl'
-                            onChange={(e) => setUserInput(e.target.value)}
-                            value={userInput}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), onSend())}
-                            disabled={voiceState.isListening || voiceState.isSpeaking}
-                        />
-
-                        {/* Controls Container */}
-                        <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                            {/* Voice Input Button */}
-                            <VoiceMicButton
-                                isListening={voiceState.isListening}
-                                isProcessing={voiceState.isProcessing}
-                                isSupported={voiceState.isSupported}
-                                error={voiceState.error}
-                                onClick={voiceControls.toggleListening}
-                                className=""
-                                size="sm"
-                                variant="ghost"
-                            />
-
-                            {/* Send Button */}
-                            <Button
-                                size='icon'
-                                className={`h-10 w-10 rounded-xl shadow-sm transition-all duration-200 ${!userInput.trim() && !loading
-                                    ? 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-105 active:scale-95'
-                                    }`}
-                                onClick={onSend}
-                                disabled={loading || voiceState.isListening || voiceState.isSpeaking || (!userInput.trim() && !loading)}
-                            >
-                                {loading ? <Loader className='h-4 w-4 animate-spin' /> : <Send className='h-4 w-4' />}
-                            </Button>
+                        {/* Footer Disclaimer */}
+                        <div className="text-center mt-3 flex items-center justify-between px-4">
+                            <p className="text-xs text-gray-400 text-center w-full">
+                                By messaging Book With AI, you agree to our <span className="underline cursor-pointer hover:text-gray-600">Terms</span> and have read our <span className="underline cursor-pointer hover:text-gray-600">Privacy Policy</span>.
+                            </p>
+                            {/* Help Icon */}
+                            <div className="absolute right-4 bottom-[-10px] hidden md:block">
+                                <div className="w-8 h-8 bg-black dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                                    <span className="font-bold text-sm">?</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </section>
+                </div>
             )}
         </div>
     )

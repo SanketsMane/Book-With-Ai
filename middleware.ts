@@ -5,7 +5,8 @@ const isPublicRoute = createRouteMatcher([
     '/explore',
     '/sign-in(.*)',
     '/sign-up(.*)',
-    '/loyalty-program'
+    '/loyalty-program',
+    '/api/google-place-detail'
 ])
 
 export default clerkMiddleware(async (auth, req) => {

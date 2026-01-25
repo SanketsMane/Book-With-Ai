@@ -23,13 +23,16 @@ export default defineSchema({
         isPremium: v.optional(v.boolean()),
         creditsRemaining: v.optional(v.number()),
         totalCreditsUsed: v.optional(v.number()),
-    }),
+    })
+        .index("by_email", ["email"]),
 
     TripDetailTable: defineTable({
         tripId: v.string(),
         tripDetail: v.any(),
         uid: v.id('UserTable')
-    }),
+    })
+        .index("by_uid", ["uid"])
+        .index("by_trip_id", ["tripId"]),
 
     // Real-time flight bookings
     FlightBookings: defineTable({
@@ -49,7 +52,9 @@ export default defineSchema({
         status: v.string(), // "confirmed", "pending", "cancelled"
         bookingDate: v.string(),
         passengerDetails: v.any(),
-    }),
+    })
+        .index("by_user", ["userId"])
+        .index("by_user_and_date", ["userId", "date"]),
 
     // Real-time hotel bookings  
     HotelBookings: defineTable({
@@ -128,13 +133,23 @@ export default defineSchema({
         scheduledFor: v.optional(v.string()), // For scheduled notifications
         priority: v.string(), // "low", "medium", "high", "urgent"
         category: v.string(), // "travel", "booking", "alert", "reminder"
-    }),
+    })
+        .index("by_user", ["userId"])
+        .index("by_user_unread", ["userId", "isRead"]),
 
     // Price tracking for flights and hotels
     PriceAlerts: defineTable({
         userId: v.string(),
         alertType: v.string(), // "flight", "hotel"
-        searchParams: v.any(), // Original search parameters
+        // Author: Sanket - Basic typed schema for search params to prevent corruption
+        searchParams: v.object({
+            from: v.optional(v.string()),
+            to: v.optional(v.string()),
+            location: v.optional(v.string()),
+            date: v.optional(v.string()),
+            checkIn: v.optional(v.string()),
+            checkOut: v.optional(v.string()),
+        }),
         targetPrice: v.optional(v.number()),
         currentPrice: v.number(),
         lowestPrice: v.number(),
@@ -148,7 +163,8 @@ export default defineSchema({
         createdAt: v.string(),
         lastChecked: v.string(),
         notificationSent: v.boolean(),
-    }),
+    })
+        .index("by_user", ["userId"]),
 
     // Trip reminders and planning alerts
     TripReminders: defineTable({
@@ -189,7 +205,8 @@ export default defineSchema({
             end: v.string(),
         })),
         updatedAt: v.string(),
-    }),
+    })
+        .index("by_user", ["userId"]),
 
     // User loyalty programs
     LoyaltyPrograms: defineTable({
@@ -202,7 +219,8 @@ export default defineSchema({
         progress: v.number(),    // 0-100
         nextTierMiles: v.number(),
         nextTier: v.string(),
-    }),
+    })
+        .index("by_user", ["userId"]),
 
     // --- Phase 1: New Core Features ---
 
@@ -399,6 +417,9 @@ export default defineSchema({
         tags: v.array(v.string()),
         color: v.optional(v.string()),
         folder: v.optional(v.string()),
+
+        // Verification
+        verificationStatus: v.optional(v.string()), // "verified" | "pending" | "rejected"
 
         // Security
         isEncrypted: v.boolean(),

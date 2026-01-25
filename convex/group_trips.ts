@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser } from "./lib/auth";
 
 // Get user's group trips
 export const getGroupTrips = query({
@@ -54,14 +55,8 @@ export const createGroupTrip = mutation({
         }),
     },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthorized");
-
-        // Fetch user details for the member entry
-        const user = await ctx.db
-            .query("UserTable")
-            .filter((q) => q.eq(q.field("email"), identity.email))
-            .first();
+        // Author: Sanket - Using centralized auth helper
+        const { user, identity } = await getCurrentUser(ctx);
 
         const userName = user?.name || "Organizer";
 
@@ -159,9 +154,10 @@ export const sendMessage = mutation({
         const isMember = trip.members.some(m => m.email === identity.email);
         if (!isMember) throw new Error("Not a member of this trip");
 
+        // Author: Sanket - Using indexed query for performance
         const user = await ctx.db
             .query("UserTable")
-            .filter((q) => q.eq(q.field("email"), identity.email))
+            .withIndex('by_email', (q) => q.eq('email', identity.email!))
             .first();
 
         const messages = trip.messages;

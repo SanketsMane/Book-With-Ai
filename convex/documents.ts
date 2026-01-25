@@ -69,6 +69,7 @@ export const createDocument = mutation({
                 issuingCountry: "",
                 issueDate: "",
             } : undefined,
+            verificationStatus: "pending",
             sharedWith: [],
             uploadedAt: new Date().toISOString(),
             version: 1,

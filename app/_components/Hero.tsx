@@ -110,7 +110,7 @@ function Hero() {
     ]
 
     return (
-        <div className='min-h-screen bg-transparent flex flex-col items-center pt-16 px-4 pb-20'>
+        <div className='w-full bg-transparent flex flex-col items-center pt-16 px-4 pb-20'>
             <div className='max-w-7xl w-full text-center space-y-10'>
 
                 {/* Header Section */}
@@ -145,8 +145,9 @@ function Hero() {
                             className='border-none text-lg shadow-none focus-visible:ring-0 h-14 bg-transparent px-4 placeholder:text-muted-foreground/50'
                             onClick={onStartPlanning}
                             readOnly
+                            suppressHydrationWarning
                         />
-                        <Button size="icon" className="h-12 w-12 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-sm" onClick={onStartPlanning}>
+                        <Button size="icon" className="h-12 w-12 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-sm" onClick={onStartPlanning} suppressHydrationWarning>
                             <Sparkles className="h-5 w-5 text-white" />
                         </Button>
                     </div>
@@ -154,25 +155,25 @@ function Hero() {
 
                 {/* Action Buttons */}
                 <div className='flex flex-wrap items-center justify-center gap-4 pt-4'>
-                    <Button size='lg' className='bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 text-base shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5' onClick={onStartPlanning}>
+                    <Button size='lg' className='bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12 text-base shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5' onClick={onStartPlanning} suppressHydrationWarning>
                         Start Planning
                     </Button>
-                    <Button size='lg' variant='outline' className='rounded-full px-8 h-12 text-base border-2 hover:bg-muted/50' onClick={() => router.push('/explore')}>
+                    <Button size='lg' variant='outline' className='rounded-full px-8 h-12 text-base border-2 hover:bg-muted/50' onClick={() => router.push('/explore')} suppressHydrationWarning>
                         Explore Destinations
                     </Button>
                 </div>
 
                 {/* AI Suggestions Chips */}
                 <div className='pt-8 space-y-4'>
-                    <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground/80 lowercase">
-                        <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
-                        Suggested Prompts
+                    <div className="flex items-center justify-center gap-2 text-primary font-bold tracking-tight text-lg mb-4">
+                        <Sparkles className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                        AI-Powered Suggestions
                     </div>
                     <div className='flex flex-wrap justify-center gap-3 max-w-4xl mx-auto'>
                         {suggestions.map((item, index) => (
                             <div key={index}
                                 onClick={onStartPlanning}
-                                className='flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-card hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-border rounded-full text-sm font-medium text-muted-foreground hover:text-blue-600 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow'
+                                className='flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-card hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-muted-foreground/20 rounded-full text-sm font-medium text-foreground hover:text-blue-600 hover:border-blue-200 transition-all cursor-pointer shadow-sm hover:shadow-md'
                             >
                                 {item.icon}
                                 {item.text}
@@ -182,17 +183,17 @@ function Hero() {
                 </div>
 
                 {/* Features Grid */}
-                <div className='pt-20 pb-10'>
+                <section className='w-full pt-20 pb-20'>
                     <div className="flex flex-col items-center mb-12">
                         <h2 className='text-3xl font-bold text-foreground mb-4'>Explore All Features</h2>
                         <p className="text-muted-foreground max-w-lg">Everything you need to plan, book, and manage your travels in one place.</p>
                     </div>
 
-                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full'>
                         {features.map((feature, index) => (
                             <div key={index}
-                                className='group p-6 rounded-3xl border border-border bg-white dark:bg-card hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col items-start text-left gap-4 h-full'
-                                onClick={() => router.push(feature.path)}
+                                className={`group p-6 rounded-3xl border border-border bg-white dark:bg-card hover:shadow-xl hover:shadow-blue-900/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col items-start text-left gap-4 h-full ${feature.path === '#' ? 'opacity-75 cursor-not-allowed hover:translate-y-0 hover:shadow-none' : ''}`}
+                                onClick={() => feature.path !== '#' && router.push(feature.path)}
                             >
                                 <div className={`p-3.5 rounded-2xl ${feature.color.replace('bg-', 'bg-opacity-10 text-').replace('text-white', '')} bg-opacity-10 w-fit group-hover:scale-110 transition-transform duration-300`}>
                                     {/* Map icon color correctly by cloning element to override className, strict UI fix */}
@@ -207,7 +208,7 @@ function Hero() {
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
             </div>
         </div>
     )

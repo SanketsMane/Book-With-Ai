@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { getCurrentUser, getCurrentUserEmail } from "./lib/auth";
 
 // Fetch all dashboard data for a user
 export const getUserDashboard = query({
@@ -9,11 +10,10 @@ export const getUserDashboard = query({
         if (!identity) {
             return null;
         }
-        const userId = identity.email!;
 
-        const user = await ctx.db.query("UserTable")
-            .filter((q) => q.eq(q.field("email"), userId))
-            .first();
+        // Author: Sanket - Using centralized auth helper
+        const { user } = await getCurrentUser(ctx);
+        const userId = user.email;
 
         // Let's fetch preferences
         const preferences = await ctx.db.query("UserPreferences")
@@ -74,9 +74,8 @@ export const updateProfile = mutation({
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) throw new Error("Unauthorized");
 
-        const user = await ctx.db.query("UserTable")
-            .filter((q) => q.eq(q.field("email"), identity.email!))
-            .unique();
+        // Author: Sanket - Using centralized auth helper
+        const { user } = await getCurrentUser(ctx);
 
         if (!user) {
             throw new Error("User profile not found");

@@ -1,3 +1,4 @@
+'use client'
 import React, { useEffect, useState } from 'react'
 import { Trip } from '../page'
 import Image from 'next/image'
@@ -29,6 +30,7 @@ function MyTripCardItem({ trip }: Props) {
             <div className="relative overflow-hidden rounded-2xl h-[240px] mb-4">
                 <Image src={photoUrl ? photoUrl : '/placeholder.jpg'} alt={trip.tripId} fill
                     className='object-cover group-hover:scale-105 transition-transform duration-500'
+                    unoptimized={true}
                 />
             </div>
             <div className="px-1">

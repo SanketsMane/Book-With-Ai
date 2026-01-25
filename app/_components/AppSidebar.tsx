@@ -21,16 +21,16 @@ import { UserButton, useUser } from '@clerk/nextjs'
 
 const sidebarItems = [
     { icon: <Home className="w-5 h-5" />, label: 'Home', path: '/' },
-    { icon: <Plane className="w-5 h-5" />, label: 'My Trips', path: '/my-trips' },
+    { icon: <Plane className="w-5 h-5" />, label: 'Flights', path: '/my-trips' },
+    { icon: <Bookmark className="w-5 h-5" />, label: 'My Trips', path: '/my-trips' },
     { icon: <Bell className="w-5 h-5" />, label: 'Price Alerts', path: '/price-alerts' },
     { icon: <Map className="w-5 h-5" />, label: 'Explore', path: '/explore' },
     { icon: <Award className="w-5 h-5" />, label: 'Loyalty & Miles', path: '/loyalty-program' },
     { icon: <FileText className="w-5 h-5" />, label: 'Itineraries', path: '/create-new-trip' },
     { icon: <FolderClosed className="w-5 h-5" />, label: 'Document Vault', path: '/documents' },
-    { icon: <Users className="w-5 h-5" />, label: 'Group Trips', path: '/group-planning' },
-    { icon: <Zap className="w-5 h-5" />, label: 'Pro Mode', path: '/pro-mode' },
+    { icon: <Users className="w-5 h-5" />, label: 'Group Trips (Soon)', path: '/group-planning' },
+    { icon: <Zap className="w-5 h-5" />, label: 'Pro Mode (Soon)', path: '/pro-mode' },
     { icon: <ArrowUpCircle className="w-5 h-5" />, label: 'Upgrade Advisor', path: '/upgrades' },
-    { icon: <Bookmark className="w-5 h-5" />, label: 'Saved Flights', path: '/saved' },
     { icon: <Navigation className="w-5 h-5" />, label: 'Airport Analyzer', path: '/airports' },
 ]
 
@@ -39,9 +39,9 @@ function AppSidebar() {
     const { user } = useUser();
 
     return (
-        <div className="w-72 h-screen border-r border-border/50 bg-sidebar/80 backdrop-blur-xl flex flex-col fixed left-0 top-0 overflow-y-auto hidden lg:flex z-50 transition-all duration-300">
+        <div className="w-72 h-screen border-r border-border/50 bg-sidebar/80 backdrop-blur-xl flex flex-col fixed left-0 top-0 hidden lg:flex z-50 transition-all duration-300">
             {/* Logo Section */}
-            <div className="p-8 pb-6">
+            <div className="p-8 pb-6 shrink-0">
                 <div className="flex items-center gap-3 group cursor-pointer">
                     <div className="w-10 h-10 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
                         B
@@ -51,7 +51,7 @@ function AppSidebar() {
             </div>
 
             {/* Navigation Menu */}
-            <nav className="flex-1 px-4 space-y-1.5 mt-4">
+            <nav className="flex-1 px-4 space-y-2 mt-4 overflow-hidden hover:overflow-y-auto">
                 {sidebarItems.map((item, index) => {
                     const isActive = path === item.path;
                     return (
@@ -68,7 +68,7 @@ function AppSidebar() {
                                     {React.cloneElement(item.icon as React.ReactElement<{ className?: string }>, {
                                         className: `w-5 h-5 transition-colors ${isActive ? 'text-primary' : 'group-hover:text-primary'}`
                                     })}
-                                    <span className="text-sm">{item.label}</span>
+                                    <span className="text-sm font-medium">{item.label}</span>
                                 </div>
                             </div>
                         </Link>
@@ -77,7 +77,7 @@ function AppSidebar() {
             </nav>
 
             {/* User Profile Section */}
-            <div className="p-6 border-t border-border/50 bg-sidebar/50 backdrop-blur-sm">
+            <div className="p-6 border-t border-border/50 bg-sidebar/50 backdrop-blur-sm shrink-0">
                 {user ? (
                     <div className="flex items-center gap-3 p-3 rounded-2xl hover:bg-sidebar-accent cursor-pointer transition-colors border border-transparent hover:border-border/50 group">
                         <UserButton

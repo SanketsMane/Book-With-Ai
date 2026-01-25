@@ -8,8 +8,9 @@ export const getAlerts = query({
         if (!identity) {
             return [];
         }
+        // Author: Sanket - Using indexed query for performance
         return await ctx.db.query("PriceAlerts")
-            .filter(q => q.eq(q.field("userId"), identity.email!))
+            .withIndex("by_user", (q) => q.eq("userId", identity.email!))
             .collect();
     }
 });

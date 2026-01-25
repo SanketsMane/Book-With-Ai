@@ -61,23 +61,53 @@ export default function RealTimeHotelSearch() {
     }
 
     setLoading(true);
+    setHotels([]); // Clear previous results
+
     try {
-      const response = await fetch('/api/hotels/search', {
+      const response = await fetch('/api/search-hotels', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(searchData)
+        body: JSON.stringify({
+          location: searchData.city,
+          budget: searchData.budget?.toString(), // API expects string budget usually, or handles number
+          checkIn: searchData.checkIn,
+          checkOut: searchData.checkOut
+        })
       });
 
-      const data: HotelSearchData = await response.json();
-      
-      if (data.success) {
-        setHotels(data.hotels);
+      const data = await response.json();
+
+      if (data.hotels) {
+        // Map SerpAPI results to component's Hotel interface if needed, 
+        // but the API already returns a coherent structure. 
+        // Let's ensure compatibility.
+        const mappedHotels: Hotel[] = data.hotels.map((h: any, idx: number) => ({
+          id: h.name + idx, // Generate ID if missing
+          name: h.name,
+          category: 'Hotel', // Default
+          rating: h.rating || 0,
+          reviews: h.reviews || 0,
+          pricePerNight: parseInt(h.price.replace(/[^\d]/g, '')) || 0,
+          totalPrice: (parseInt(h.price.replace(/[^\d]/g, '')) || 0) *
+            Math.ceil((new Date(searchData.checkOut).getTime() - new Date(searchData.checkIn).getTime()) / (1000 * 60 * 60 * 24)),
+          currency: 'INR',
+          location: h.address,
+          distance: 'Center', // Not always available
+          image: h.image,
+          amenities: h.amenities || [],
+          roomType: 'Standard',
+          breakfast: h.amenities?.includes('Breakfast') ? 'Included' : 'Not included',
+          cancellation: 'Check policy',
+          availability: 5
+        }));
+
+        setHotels(mappedHotels);
         setHasSearched(true);
-        console.log(`Found ${data.hotels.length} hotels in ${data.city}`);
+        console.log(`Found ${mappedHotels.length} hotels in ${searchData.city}`);
       } else {
-        alert('Failed to search hotels');
+        alert('No hotels found');
       }
     } catch (error) {
       console.error('Hotel search error:', error);
@@ -94,9 +124,9 @@ export default function RealTimeHotelSearch() {
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
-      <Star 
-        key={i} 
-        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+      <Star
+        key={i}
+        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
       />
     ));
   };
@@ -127,7 +157,7 @@ export default function RealTimeHotelSearch() {
               <Input
                 placeholder="Destination city"
                 value={searchData.city}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({...searchData, city: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({ ...searchData, city: e.target.value })}
               />
             </div>
             <div>
@@ -135,7 +165,7 @@ export default function RealTimeHotelSearch() {
               <Input
                 type="date"
                 value={searchData.checkIn}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({...searchData, checkIn: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({ ...searchData, checkIn: e.target.value })}
               />
             </div>
             <div>
@@ -143,7 +173,7 @@ export default function RealTimeHotelSearch() {
               <Input
                 type="date"
                 value={searchData.checkOut}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({...searchData, checkOut: e.target.value})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({ ...searchData, checkOut: e.target.value })}
               />
             </div>
             <div>
@@ -153,7 +183,7 @@ export default function RealTimeHotelSearch() {
                 min="1"
                 max="8"
                 value={searchData.guests}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({...searchData, guests: parseInt(e.target.value)})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({ ...searchData, guests: parseInt(e.target.value) })}
               />
             </div>
             <div>
@@ -164,11 +194,11 @@ export default function RealTimeHotelSearch() {
                 step="500"
                 placeholder="Max budget"
                 value={searchData.budget}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({...searchData, budget: parseInt(e.target.value)})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchData({ ...searchData, budget: parseInt(e.target.value) })}
               />
             </div>
-            <Button 
-              onClick={searchHotels} 
+            <Button
+              onClick={searchHotels}
               disabled={loading}
               className="w-full"
             >
@@ -302,7 +332,7 @@ export default function RealTimeHotelSearch() {
                             {hotel.availability} rooms left
                           </div>
 
-                          <Button 
+                          <Button
                             onClick={() => bookHotel(hotel)}
                             className="w-full"
                             size="lg"

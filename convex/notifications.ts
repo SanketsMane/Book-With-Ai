@@ -44,9 +44,10 @@ export const getUserNotifications = query({
     }
     const userId = identity.email!;
 
+    // Author: Sanket - Using indexed query for performance
     let query = ctx.db
       .query("Notifications")
-      .filter((q) => q.eq(q.field("userId"), userId));
+      .withIndex("by_user", (q) => q.eq("userId", userId));
 
     if (args.unreadOnly) {
       query = query.filter((q) => q.eq(q.field("isRead"), false));
@@ -80,10 +81,10 @@ export const markAllNotificationsRead = mutation({
     if (!identity) throw new Error("Unauthorized");
     const userId = identity.email!;
 
+    // Author: Sanket - Using indexed composite query
     const notifications = await ctx.db
       .query("Notifications")
-      .filter((q) => q.eq(q.field("userId"), userId))
-      .filter((q) => q.eq(q.field("isRead"), false))
+      .withIndex("by_user_unread", (q) => q.eq("userId", userId).eq("isRead", false))
       .collect();
 
     for (const notification of notifications) {
@@ -196,9 +197,10 @@ export const getUserPriceAlerts = query({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    // Author: Sanket - Using indexed query for performance
     let query = ctx.db
       .query("PriceAlerts")
-      .filter((q) => q.eq(q.field("userId"), args.userId));
+      .withIndex("by_user", (q) => q.eq("userId", args.userId));
 
     if (args.activeOnly) {
       query = query.filter((q) => q.eq(q.field("isActive"), true));
@@ -246,9 +248,10 @@ export const getNotificationPreferences = query({
     if (!identity) return null; // or default?
     const userId = identity.email!;
 
+    // Author: Sanket - Using indexed query for performance
     const preferences = await ctx.db
       .query("NotificationPreferences")
-      .filter((q) => q.eq(q.field("userId"), userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
     // Return default preferences if none exist
@@ -298,9 +301,10 @@ export const updateNotificationPreferences = mutation({
     if (!identity) throw new Error("Unauthorized");
     const userId = identity.email!;
 
+    // Author: Sanket - Using indexed query for performance
     const existing = await ctx.db
       .query("NotificationPreferences")
-      .filter((q) => q.eq(q.field("userId"), userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
 
     if (existing) {

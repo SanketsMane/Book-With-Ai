@@ -2,7 +2,7 @@
 export default {
     providers: [
         {
-            domain: "https://daring-rooster-46.clerk.accounts.dev",
+            domain: "https://engaged-gibbon-90.clerk.accounts.dev",
             applicationID: "convex",
         },
     ],

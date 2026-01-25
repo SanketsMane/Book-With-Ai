@@ -14,8 +14,9 @@ export const CreateNewUser = mutation({
         }
 
         // If User already exist?
+        // Author: Sanket - Using indexed query for performance
         const user = await ctx.db.query('UserTable')
-            .filter((q) => q.eq(q.field('email'), identity.email))
+            .withIndex('by_email', (q) => q.eq('email', identity.email!))
             .collect();
 
         if (user?.length == 0) {

@@ -1,45 +1,49 @@
 "use client"
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
-import { useConvex } from 'convex/react';
+import { useConvex, useMutation, useQuery } from 'convex/react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
 import { useUserDetail } from '../provider';
-import { TripInfo } from '../create-new-trip/_components/ChatBox';
-import { ArrowBigRightIcon } from 'lucide-react';
-import Image from 'next/image';
-import MyTripListItem from './_components/MyTripListItem';
-
-export type Trip = {
-    tripId: any,
-    tripDetail: TripInfo,
-    _id: string
-}
+import { ArrowBigRightIcon, Plane } from 'lucide-react';
+import FlightBookingCard from './_components/FlightBookingCard';
 
 function MyTrips() {
+    const { userDetail } = useUserDetail();
 
-    const [myTrips, setMyTrips] = useState<Trip[]>([]);
-    const { userDetail, setUserDetail } = useUserDetail();
-    const convex = useConvex();
+    // Fetch Real Flight Bookings
+    const flightBookings = useQuery(api.tripDetail.getUpcomingFlights) || [];
+    const deleteMockFlights = useMutation(api.tripDetail.deleteMockFlights);
 
     useEffect(() => {
-        userDetail && GetUserTrip();
-    }, [userDetail])
-
-    const GetUserTrip = async () => {
-        const result = await convex.query(api.tripDetail.GetUserTrips, {});
-        setMyTrips(result);
-        console.log(result);
-    }
+        if (userDetail) {
+            // Remove mock data as requested
+            deleteMockFlights();
+        }
+    }, [userDetail]);
 
     return (
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-screen'>
-            <div className="flex items-center gap-2 mb-8">
-                <div className="h-8 w-1 bg-blue-600 rounded-full"></div>
-                <h2 className='font-bold text-3xl text-foreground tracking-tight'>My Trips</h2>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                        <Plane className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h2 className='font-bold text-3xl text-foreground tracking-tight'>My Trips</h2>
+                        <p className="text-gray-500 dark:text-gray-400">View and manage your upcoming and past bookings</p>
+                    </div>
+                </div>
+                <div className="hidden md:block">
+                    <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        <span className="text-sm font-medium text-green-600 dark:text-green-400">Live Updates Active</span>
+                    </div>
+                </div>
             </div>
 
-            {myTrips?.length == 0 ? (
+            {flightBookings.length === 0 ? (
                 <div className='p-12 border border-dashed border-gray-300 dark:border-gray-700 rounded-3xl flex flex-col items-center justify-center gap-6 mt-6 bg-gray-50/50 dark:bg-card/50'>
                     <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
                         <ArrowBigRightIcon className="w-10 h-10 text-blue-600 dark:text-blue-400 opacity-50" />
@@ -56,18 +60,15 @@ function MyTrips() {
                 <div className="space-y-10 mt-6">
                     {/* Upcoming Trips Section */}
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">Upcoming Trips</h3>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+                            Upcoming Trips
+                            <span className="text-sm font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{flightBookings.length}</span>
+                        </h3>
                         <div className='flex flex-col gap-6'>
-                            {myTrips?.map((trip, index) => (
-                                <MyTripListItem trip={trip} key={index} />
+                            {flightBookings.map((flight, index) => (
+                                <FlightBookingCard key={index} flight={flight} />
                             ))}
                         </div>
-                    </div>
-
-                    {/* Past Trips Section - Mock Empty for structure */}
-                    <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5 opacity-50">Past Trips</h3>
-                        <p className="text-sm text-gray-400 italic">No past trips to show.</p>
                     </div>
                 </div>
             )}

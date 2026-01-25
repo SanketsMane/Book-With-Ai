@@ -37,6 +37,7 @@ function HotelCardItem({ hotel }: Props) {
                     alt={hotel?.hotel_name || 'Hotel Image'}
                     fill
                     className="object-cover"
+                    unoptimized={true}
                 />
             </div>
 

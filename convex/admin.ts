@@ -17,8 +17,9 @@ export const upgradeUserToPremium = mutation({
     }
 
     // Find user by email
+    // Author: Sanket - Using indexed query for performance
     const user = await ctx.db.query('UserTable')
-      .filter((q) => q.eq(q.field('email'), args.email))
+      .withIndex('by_email', (q) => q.eq('email', args.email))
       .first();
 
     if (!user) {
@@ -47,8 +48,9 @@ export const getUserPremiumStatus = query({
     email: v.string()
   },
   handler: async (ctx, args) => {
+    // Author: Sanket - Using indexed query for performance
     const user = await ctx.db.query('UserTable')
-      .filter((q) => q.eq(q.field('email'), args.email))
+      .withIndex('by_email', (q) => q.eq('email', args.email))
       .first();
 
     if (!user) {
@@ -81,8 +83,9 @@ export const resetUserCredits = mutation({
       throw new Error('Unauthorized admin access');
     }
 
+    // Author: Sanket - Using indexed query for performance
     const user = await ctx.db.query('UserTable')
-      .filter((q) => q.eq(q.field('email'), args.email))
+      .withIndex('by_email', (q) => q.eq('email', args.email))
       .first();
 
     if (!user) {

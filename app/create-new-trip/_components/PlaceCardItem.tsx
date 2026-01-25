@@ -35,6 +35,7 @@ function PlaceCardItem({ activity }: Props) {
                     alt={activity.place_name}
                     fill
                     className="object-cover"
+                    unoptimized={true}
                 />
             </div>
 

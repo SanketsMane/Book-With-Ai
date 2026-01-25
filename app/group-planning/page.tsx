@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 function GroupPlanning() {
     const { user, isLoaded } = useUser();
     const groupTrips = useQuery(api.group_trips.getGroupTrips,
-        user ? {} : "skip"
+        user ? {} : "skip" // Wait for user to be loaded
     );
 
     return (

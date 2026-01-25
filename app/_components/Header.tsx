@@ -8,7 +8,7 @@ import React from 'react'
 import { useTripDetail } from '../provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 import NotificationCenter from '@/components/ui/notification-center'
-import { Home, Plane, Bell, Map, Bookmark, FileText } from 'lucide-react'
+import { Home, Plane, Bell, Map, Bookmark, FileText, Award, TrendingUp } from 'lucide-react'
 
 const menuOptions = [
     {
@@ -17,7 +17,7 @@ const menuOptions = [
     },
     {
         icon: <Plane className="w-5 h-5" />,
-        path: '/flights'
+        path: '/my-trips'
     },
     {
         icon: <Bell className="w-5 h-5" />,
@@ -28,8 +28,8 @@ const menuOptions = [
         path: '/explore'
     },
     {
-        icon: <Bookmark className="w-5 h-5" />,
-        path: '/my-trips'
+        icon: <Award className="w-5 h-5" />,
+        path: '/loyalty-program'
     },
     {
         icon: <FileText className="w-5 h-5" />,

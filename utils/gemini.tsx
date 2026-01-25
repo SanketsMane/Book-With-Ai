@@ -4,7 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Get the Gemini model (using current stable model name)
-export const geminiModel = genAI.getGenerativeModel({ 
+// Sanket: Updated to 'gemini-2.5-flash' (Current stable model)
+export const geminiModel = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   generationConfig: {
     temperature: 0.7,
@@ -41,11 +42,12 @@ export async function generateGeminiChat(messages: any[], systemPrompt: string) 
     }).filter(msg => msg !== '').join('\n');
 
     const fullPrompt = `${systemPrompt}\n\n${geminiMessages}`;
-    
+    console.log('📝 Gemini Full Prompt:', fullPrompt);
+
     const result = await geminiModel.generateContent(fullPrompt);
     const response = await result.response;
     const text = response.text();
-    console.log('✅ Gemini API call successful');
+    console.log('✅ Gemini Response Text:', text);
     return text;
   } catch (error) {
     console.error('Gemini Chat API Error:', error);
